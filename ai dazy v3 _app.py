@@ -148,6 +148,49 @@ def unique_folder_name(base: str, existing: set) -> str:
         i += 1
     return f"{base}_{i}"
 
+# ✅ 파일명 -> 제목 전처리 (접두어 탐지 정확도 ↑)
+def title_from_filename(file_name: str) -> str:
+    # 확장자 제거
+    base = file_name.rsplit(".", 1)[0]
+    # 언더스코어/하이픈을 공백으로 바꿔 토큰화가 가능하게
+    base = re.sub(r"[_\-]+", " ", base)
+    # 공백 정리
+    base = re.sub(r"\s+", " ", base).strip()
+    return base
+
+# ✅ (핵심) 3개 이상에서 반복되는 공통 접두어(prefix) 제거
+def normalize_titles_by_common_prefix(titles, min_repeat=3):
+    """
+    titles: ["창업 아이디어 스마트스토어", "창업 아이디어 국밥집", ...]
+    동일한 앞부분(prefix)이 min_repeat개 이상 반복되면 그 prefix를 제거하고 뒤쪽만 반환
+    """
+    tokenized = [t.split() for t in titles]
+
+    prefix_counts = {}
+    for tokens in tokenized:
+        # prefix 길이 1 ~ (len-1) 까지만 (전체 제거 방지)
+        for i in range(1, len(tokens)):
+            prefix = " ".join(tokens[:i])
+            prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+
+    # 조건 충족하는 prefix 후보들
+    candidates = [p for p, c in prefix_counts.items() if c >= min_repeat]
+    if not candidates:
+        return titles
+
+    # 가장 "긴" prefix를 선택 (ex: '창업'보다 '창업 아이디어' 우선)
+    common_prefix = max(candidates, key=lambda x: (len(x.split()), len(x)))
+
+    normalized = []
+    for t in titles:
+        if t.startswith(common_prefix):
+            trimmed = t[len(common_prefix):].strip()
+            normalized.append(trimmed if trimmed else t)
+        else:
+            normalized.append(t)
+
+    return normalized
+
 # ----------------------------
 # ✨ OpenAI / 임베딩
 # ----------------------------
@@ -229,8 +272,16 @@ def generate_readme(topic, files, auto_split=False):
     return final
 
 def cluster_documents(files):
-    titles = [f"title: {f.name.split('.')[0]}" for f in files]
-    vectors = embed_titles(titles)
+    # ✅ 파일명 -> 제목 텍스트로 변환
+    raw_titles = [title_from_filename(f.name) for f in files]
+
+    # ✅ 3개 이상 반복되는 공통 prefix 제거
+    norm_titles = normalize_titles_by_common_prefix(raw_titles, min_repeat=3)
+
+    # ✅ 클러스터링용 임베딩 입력 (prefix 제거된 제목 기반)
+    embed_inputs = [f"title: {t}" for t in norm_titles]
+
+    vectors = embed_titles(embed_inputs)
     return HDBSCAN(min_cluster_size=5, min_samples=1).fit_predict(vectors)
 
 # ----------------------------
