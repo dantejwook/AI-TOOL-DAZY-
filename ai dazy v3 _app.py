@@ -4,6 +4,7 @@ import zipfile
 import os
 from pathlib import Path
 import openai
+from openai import OpenAI 
 from sklearn.cluster import HDBSCAN
 
 # ----------------------------
