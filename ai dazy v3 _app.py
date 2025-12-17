@@ -14,7 +14,7 @@ import re
 st.set_page_config(page_title="AI dazy document sorter", page_icon="🗂️", layout="wide")
 
 # ----------------------------
-# 🔐 OpenAI API 키 설정 (legacy 방식)
+# 🔐 OpenAI API 키 설정 (legacy)
 # ----------------------------
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
@@ -25,15 +25,12 @@ else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
 
 # ----------------------------
-# 🎨 스타일 커스터마이징
+# 🎨 스타일 커스터마이징 (기존 유지)
 # ----------------------------
 st.markdown(
     """
     <style>
-    body {
-        background-color: #f8f9fc;
-        font-family: 'Pretendard', sans-serif;
-    }
+    body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
     .stButton>button {
         border-radius: 10px;
         background-color: #4a6cf7;
@@ -43,9 +40,7 @@ st.markdown(
         font-weight: 600;
         transition: 0.2s;
     }
-    .stButton>button:hover {
-        background-color: #3451c1;
-    }
+    .stButton>button:hover { background-color: #3451c1; }
     .status-bar {
         background-color: #595656;
         border-radius: 6px;
@@ -69,7 +64,7 @@ st.markdown(
 )
 
 # ----------------------------
-# 🧭 사이드바 설정
+# 🧭 사이드바 (기존 유지)
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
@@ -79,7 +74,7 @@ if st.sidebar.button("🔁 다시 시작"):
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
-# 📁 메인 UI 구성
+# 📁 메인 UI (기존 유지)
 # ----------------------------
 left_col, right_col = st.columns([1, 1])
 
@@ -102,16 +97,17 @@ with right_col:
     zip_placeholder = st.empty()
 
 # ----------------------------
-# ⚙️ 상태 표시 / 로그
+# ⚙️ 상태 / 로그
 # ----------------------------
-status_placeholder = st.empty()
+progress_placeholder = st.empty()
+progress_text = st.empty()
 log_box = st.empty()
-log_messages = []
+logs = []
 
 def log(msg):
-    log_messages.append(msg)
+    logs.append(msg)
     log_box.markdown(
-        "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>",
+        "<div class='log-box'>" + "<br>".join(logs[-10:]) + "</div>",
         unsafe_allow_html=True,
     )
 
@@ -121,46 +117,58 @@ def log(msg):
 CACHE_DIR = Path(".cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-EMBED_CACHE = CACHE_DIR / "embeddings.json"
-GROUP_CACHE = CACHE_DIR / "group_names.json"
-README_CACHE = CACHE_DIR / "readmes.json"
-
 def load_cache(p):
-    return json.loads(p.read_text()) if p.exists() else {}
+    try:
+        return json.loads(p.read_text()) if p.exists() else {}
+    except Exception:
+        return {}
 
 def save_cache(p, d):
     p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+
+EMBED_CACHE = CACHE_DIR / "embeddings.json"
+GROUP_CACHE = CACHE_DIR / "group_names.json"
+README_CACHE = CACHE_DIR / "readmes.json"
 
 embedding_cache = load_cache(EMBED_CACHE)
 group_cache = load_cache(GROUP_CACHE)
 readme_cache = load_cache(README_CACHE)
 
-def h(text):
-    return hashlib.sha256(text.encode()).hexdigest()
+def h(t): return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 # ----------------------------
-# ✨ OpenAI 함수 (legacy + 캐시)
+# ✨ 공통 유틸
+# ----------------------------
+def sanitize_folder_name(name: str) -> str:
+    name = (name or "").strip()
+    name = re.sub(r"[^\w가-힣\s]", "", name)
+    name = re.sub(r"\s+", "_", name)
+    return name.strip("_") or "기타_문서"
+
+# ----------------------------
+# ✨ OpenAI 함수
 # ----------------------------
 def embed_titles(titles):
     vectors = []
-    to_call = []
+    missing = []
 
     for t in titles:
         k = h(t)
         if k in embedding_cache:
             vectors.append(embedding_cache[k])
         else:
-            to_call.append((t, k))
+            missing.append(t)
 
-    if to_call:
-        resp = openai.Embedding.create(
+    if missing:
+        r = openai.Embedding.create(
             model="text-embedding-3-large",
-            input=[t for t, _ in to_call],
+            input=missing,
         )
-        for d, (_, k) in zip(resp["data"], to_call):
-            embedding_cache[k] = d["embedding"]
-            vectors.append(d["embedding"])
+        for t, d in zip(missing, r["data"]):
+            embedding_cache[h(t)] = d["embedding"]
         save_cache(EMBED_CACHE, embedding_cache)
+
+        vectors = [embedding_cache[h(t)] for t in titles]
 
     return vectors
 
@@ -174,35 +182,35 @@ def generate_group_name(names):
 짧고 명확한 한글 폴더명 하나만 출력하세요.
 
 규칙:
-- 소문자
-- snake_case
 - 2~4 단어
+- 조사 사용 금지
+- 숫자/번호 금지
 - 설명 금지
 """
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You generate folder names."},
-            {"role": "user", "content": "\n".join(names)},
+            {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
+            {"role": "user", "content": prompt + "\n" + "\n".join(names)},
         ],
-        temperature=0.2,
-        max_tokens=20,
+        temperature=0.3,
     )
 
-    name = re.sub(r"[^a-z0-9_]", "", r["choices"][0]["message"]["content"])
-    group_cache[k] = name or "misc_documents"
+    name = sanitize_folder_name(r["choices"][0]["message"]["content"])
+    group_cache[k] = name
     save_cache(GROUP_CACHE, group_cache)
-    return group_cache[k]
+    return name
 
 def generate_readme(topic, files):
-    k = h(topic + "||".join(sorted(files)))
+    k = h("ko||" + topic + "||" + "||".join(sorted(files)))
     if k in readme_cache:
         return readme_cache[k]
 
     prompt = f"""
-다음 문서들은 '{topic}' 그룹으로 분류되었습니다.
-각 문서 간의 시너지와 활용 목적을 설명하는 README.md를 작성하세요.
+다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
+각 문서의 관계와 활용 목적을 설명하는 README.md를 작성하세요.
+반드시 한국어로 작성하세요.
 
 문서 목록:
 {chr(10).join(files)}
@@ -210,50 +218,88 @@ def generate_readme(topic, files):
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": "너는 한국어로만 README를 작성한다."},
+            {"role": "user", "content": prompt},
+        ],
     )
 
-    readme_cache[k] = r["choices"][0]["message"]["content"]
+    content = r["choices"][0]["message"]["content"].strip()
+    readme_cache[k] = content
     save_cache(README_CACHE, readme_cache)
-    return readme_cache[k]
+    return content
 
 def cluster_documents(files):
     titles = [f"title: {f.name.split('.')[0]}" for f in files]
-    vectors = embed_titles(titles)
-    return HDBSCAN(min_cluster_size=2).fit_predict(vectors)
+    return HDBSCAN(min_cluster_size=2).fit_predict(embed_titles(titles))
 
 # ----------------------------
-# 🚀 메인 처리
+# 🚀 메인 로직 (2단계 + README)
 # ----------------------------
 if uploaded_files:
-    log("파일 업로드 완료 ✅")
+    progress = progress_placeholder.progress(0)
+    progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
+    log("파일 업로드 완료")
+
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True)
 
     labels = cluster_documents(uploaded_files)
-
     groups = {}
     for f, l in zip(uploaded_files, labels):
         groups.setdefault(l, []).append(f)
 
-    for i, (label, files) in enumerate(groups.items(), 1):
-        names = [f.name.split(".")[0] for f in files]
-        group = "unclassified_documents" if label == -1 else generate_group_name(names)
+    total = len(groups)
+    done = 0
 
-        folder = output_dir / group
-        folder.mkdir(exist_ok=True)
+    for label, files in groups.items():
+        main_group = (
+            "미분류_문서"
+            if label == -1
+            else generate_group_name([f.name.split(".")[0] for f in files])
+        )
 
-        for f in files:
-            (folder / f.name).write_bytes(f.getvalue())
+        main_folder = output_dir / main_group
+        main_folder.mkdir(parents=True, exist_ok=True)
 
-        readme = generate_readme(group, [f.name for f in files])
-        (folder / "README.md").write_text(readme, encoding="utf-8")
+        # 📄 대분류 README
+        main_readme = generate_readme(main_group, [f.name for f in files])
+        (main_folder / "README.md").write_text(main_readme, encoding="utf-8")
 
-        status_placeholder.markdown(
-            f"<div class='status-bar'>[{int(i/len(groups)*100)}% processing]</div>",
+        # 🔹 중분류
+        sub_labels = cluster_documents(files)
+        sub_groups = {}
+        for f, sl in zip(files, sub_labels):
+            sub_groups.setdefault(sl, []).append(f)
+
+        for sl, sub_files in sub_groups.items():
+            sub_group = (
+                "기타"
+                if sl == -1
+                else generate_group_name([f.name.split(".")[0] for f in sub_files])
+            )
+
+            sub_folder = main_folder / sub_group
+            sub_folder.mkdir(parents=True, exist_ok=True)
+
+            for f in sub_files:
+                (sub_folder / f.name).write_bytes(f.getvalue())
+
+            # 📄 중분류 README
+            sub_readme = generate_readme(
+                f"{main_group} - {sub_group}",
+                [f.name for f in sub_files],
+            )
+            (sub_folder / "README.md").write_text(sub_readme, encoding="utf-8")
+
+        done += 1
+        pct = int(done / total * 100)
+        progress.progress(pct)
+        progress_text.markdown(
+            f"<div class='status-bar'>[{pct}% ({done}/{total})]</div>",
             unsafe_allow_html=True,
         )
-        log(f"문서 그룹 '{group}' 처리 완료 ✅")
+        log(f"{main_group} 처리 완료")
 
     with zipfile.ZipFile("result_documents.zip", "w") as z:
         for root, _, files in os.walk(output_dir):
@@ -268,14 +314,17 @@ if uploaded_files:
         mime="application/zip",
     )
 
-    status_placeholder.markdown(
-        "<div class='status-bar'>[100% complete – 모든 문서 정리 완료]</div>",
+    progress.progress(100)
+    progress_text.markdown(
+        "<div class='status-bar'>[100% complete]</div>",
         unsafe_allow_html=True,
     )
+    log("모든 문서 정리 완료")
 
 else:
-    status_placeholder.markdown(
-        "<div class='status-bar'>[0% processing (0/0 complete)]</div>",
+    progress_placeholder.progress(0)
+    progress_text.markdown(
+        "<div class='status-bar'>[대기 중]</div>",
         unsafe_allow_html=True,
     )
     log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
