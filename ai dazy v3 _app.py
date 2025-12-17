@@ -58,6 +58,7 @@ st.markdown(
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
+    st.session_state.clear()
     st.rerun()
 
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
@@ -98,14 +99,36 @@ if uploaded_files:
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True)
 
-    for i, file in enumerate(uploaded_files, start=1):
-        file_path = output_dir / file.name
+# Step 1. 문서 분류
+labels = cluster_documents(uploaded_files)
+
+# Step 2. 그룹화
+groups = {}
+for file, label in zip(uploaded_files, labels):
+    group_name = f"Group_{label if label >= 0 else 'Unclassified'}"
+    groups.setdefault(group_name, []).append(file)
+
+# Step 3. 그룹별 폴더 생성 및 README 작성
+    for i, (group, files) in enumerate(groups.items(), start=1):
+        folder = output_dir / group
+        folder.mkdir(exist_ok=True)
+
+    for file in files:
+        file_path = folder / file.name
         with open(file_path, "wb") as f:
             f.write(file.read())
-        progress = int((i / total) * 100)
-        status_placeholder.markdown(f"<div class='status-bar'>[{progress}% processing ({i}/{total} complete)]</div>", unsafe_allow_html=True)
-        log(f"문서 처리 중: {file.name}")
-        time.sleep(0.4)  # 실제 처리 대체용 딜레이
+
+    readme = generate_readme(group, [f.name for f in files])
+    with open(folder / "README.md", "w", encoding="utf-8") as f:
+        f.write(readme)
+
+    progress = int((i / len(groups)) * 100)
+    status_placeholder.markdown(
+        f"<div style='background:#e9ecef;border-radius:6px;padding:0.5em;'>[{progress}% processing ({i}/{len(groups)} complete)]</div>",
+        unsafe_allow_html=True,
+    )
+    log(f"📄 {group} 폴더 정리 완료")
+
 
     # ZIP 파일 생성
     zip_filename = "result_documents.zip"
