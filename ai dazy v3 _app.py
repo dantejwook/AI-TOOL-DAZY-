@@ -2,11 +2,11 @@ import streamlit as st
 import zipfile
 import os
 from pathlib import Path
-from openai import OpenAI
+import openai
 from hdbscan import HDBSCAN
-import re
 import json
 import hashlib
+import re
 
 # ----------------------------
 # 🌈 기본 페이지 설정
@@ -14,22 +14,15 @@ import hashlib
 st.set_page_config(page_title="AI dazy document sorter", page_icon="🗂️", layout="wide")
 
 # ----------------------------
-# 🔐 OpenAI API 키 설정
+# 🔐 OpenAI API 키 설정 (legacy 방식)
 # ----------------------------
-api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
-if not api_key:
+if not openai.api_key:
     st.sidebar.error("🚨 OpenAI API Key가 없습니다. secrets.toml 또는 환경변수를 확인하세요.")
     st.stop()
 else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
-
-# 🔥 Streamlit Cloud proxy 강제 제거 (중요)
-os.environ.pop("HTTP_PROXY", None)
-os.environ.pop("HTTPS_PROXY", None)
-os.environ.pop("ALL_PROXY", None)
-
-client = OpenAI()
 
 # ----------------------------
 # 🎨 스타일 커스터마이징
@@ -99,7 +92,7 @@ with left_col:
     )
 
 if uploaded_files:
-    uploaded_files = [f for f in uploaded_files if f and hasattr(f, "name") and f.name.strip()]
+    uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
     if not uploaded_files:
         st.error("❗ 유효한 파일이 없습니다.")
         st.stop()
@@ -117,11 +110,13 @@ log_messages = []
 
 def log(msg):
     log_messages.append(msg)
-    log_html = "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>"
-    log_box.markdown(log_html, unsafe_allow_html=True)
+    log_box.markdown(
+        "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>",
+        unsafe_allow_html=True,
+    )
 
 # ----------------------------
-# 🧠 캐시 시스템
+# 🧠 캐시
 # ----------------------------
 CACHE_DIR = Path(".cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -130,154 +125,148 @@ EMBED_CACHE = CACHE_DIR / "embeddings.json"
 GROUP_CACHE = CACHE_DIR / "group_names.json"
 README_CACHE = CACHE_DIR / "readmes.json"
 
-def load_cache(path):
-    return json.loads(path.read_text()) if path.exists() else {}
+def load_cache(p):
+    return json.loads(p.read_text()) if p.exists() else {}
 
-def save_cache(path, data):
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+def save_cache(p, d):
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
 
 embedding_cache = load_cache(EMBED_CACHE)
 group_cache = load_cache(GROUP_CACHE)
 readme_cache = load_cache(README_CACHE)
 
-def hash_key(text):
+def h(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
 # ----------------------------
-# ✨ OpenAI + 캐시 적용 함수
+# ✨ OpenAI 함수 (legacy + 캐시)
 # ----------------------------
 def embed_titles(titles):
     vectors = []
-    to_request = []
+    to_call = []
 
     for t in titles:
-        key = hash_key(t)
-        if key in embedding_cache:
-            vectors.append(embedding_cache[key])
+        k = h(t)
+        if k in embedding_cache:
+            vectors.append(embedding_cache[k])
         else:
-            to_request.append((t, key))
+            to_call.append((t, k))
 
-    if to_request:
-        response = client.embeddings.create(
+    if to_call:
+        resp = openai.Embedding.create(
             model="text-embedding-3-large",
-            input=[t for t, _ in to_request]
+            input=[t for t, _ in to_call],
         )
-        for emb, (_, key) in zip(response.data, to_request):
-            embedding_cache[key] = emb.embedding
-            vectors.append(emb.embedding)
+        for d, (_, k) in zip(resp["data"], to_call):
+            embedding_cache[k] = d["embedding"]
+            vectors.append(d["embedding"])
         save_cache(EMBED_CACHE, embedding_cache)
 
     return vectors
 
-def generate_group_name(file_names):
-    key = hash_key("||".join(sorted(file_names)))
-    if key in group_cache:
-        return group_cache[key]
+def generate_group_name(names):
+    k = h("||".join(sorted(names)))
+    if k in group_cache:
+        return group_cache[k]
 
-    prompt = f"""
-    다음 문서 제목들을 보고 공통 주제를 대표하는
-    짧고 명확한 한글 폴더명을 하나 생성하세요.
+    prompt = """
+다음 문서 제목들의 공통 주제를 대표하는
+짧고 명확한 영문 폴더명 하나만 출력하세요.
 
-    규칙:
-    - 뱀_상자
-    - 2~4 단어
-    - 설명 없이 이름만 출력
+규칙:
+- 소문자
+- snake_case
+- 2~4 단어
+- 설명 금지
+"""
 
-    문서 제목:
-    {chr(10).join(file_names)}
-    """
-
-    response = client.chat.completions.create(
+    r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You generate concise folder names."},
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": "You generate folder names."},
+            {"role": "user", "content": "\n".join(names)},
         ],
-        max_tokens=20,
         temperature=0.2,
+        max_tokens=20,
     )
 
-    name = re.sub(r"[^a-z0-9_]", "", response.choices[0].message.content.strip())
-    group_cache[key] = name or "misc_documents"
+    name = re.sub(r"[^a-z0-9_]", "", r["choices"][0]["message"]["content"])
+    group_cache[k] = name or "misc_documents"
     save_cache(GROUP_CACHE, group_cache)
-    return group_cache[key]
+    return group_cache[k]
 
-def generate_readme(topic, file_names):
-    key = hash_key(topic + "||".join(sorted(file_names)))
-    if key in readme_cache:
-        return readme_cache[key]
+def generate_readme(topic, files):
+    k = h(topic + "||".join(sorted(files)))
+    if k in readme_cache:
+        return readme_cache[k]
 
     prompt = f"""
-    다음 문서들은 '{topic}' 그룹으로 분류된 자료입니다.
-    각 문서의 시너지 효과를 설명하는 README.md를 작성해 주세요.
+다음 문서들은 '{topic}' 그룹으로 분류되었습니다.
+각 문서 간의 시너지와 활용 목적을 설명하는 README.md를 작성하세요.
 
-    문서 목록:
-    {chr(10).join(file_names)}
-    """
+문서 목록:
+{chr(10).join(files)}
+"""
 
-    response = client.chat.completions.create(
+    r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
     )
 
-    readme_cache[key] = response.choices[0].message.content.strip()
+    readme_cache[k] = r["choices"][0]["message"]["content"]
     save_cache(README_CACHE, readme_cache)
-    return readme_cache[key]
+    return readme_cache[k]
 
 def cluster_documents(files):
     titles = [f"title: {f.name.split('.')[0]}" for f in files]
     vectors = embed_titles(titles)
-    clusterer = HDBSCAN(min_cluster_size=2, metric="euclidean")
-    return clusterer.fit_predict(vectors)
+    return HDBSCAN(min_cluster_size=2).fit_predict(vectors)
 
 # ----------------------------
-# 🚀 메인 처리 로직
+# 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
     log("파일 업로드 완료 ✅")
     output_dir = Path("output_docs")
-    output_dir.mkdir(exist_ok=True, parents=True)
+    output_dir.mkdir(exist_ok=True)
 
     labels = cluster_documents(uploaded_files)
 
-    raw_groups = {}
-    for file, label in zip(uploaded_files, labels):
-        raw_groups.setdefault(label, []).append(file)
+    groups = {}
+    for f, l in zip(uploaded_files, labels):
+        groups.setdefault(l, []).append(f)
 
-    for i, (label, files) in enumerate(raw_groups.items(), start=1):
+    for i, (label, files) in enumerate(groups.items(), 1):
         names = [f.name.split(".")[0] for f in files]
         group = "unclassified_documents" if label == -1 else generate_group_name(names)
 
         folder = output_dir / group
-        folder.mkdir(exist_ok=True, parents=True)
+        folder.mkdir(exist_ok=True)
 
         for f in files:
-            with open(folder / f.name, "wb") as out:
-                out.write(f.read())
+            (folder / f.name).write_bytes(f.getvalue())
 
         readme = generate_readme(group, [f.name for f in files])
         (folder / "README.md").write_text(readme, encoding="utf-8")
 
-        progress = int((i / len(raw_groups)) * 100)
         status_placeholder.markdown(
-            f"<div class='status-bar'>[{progress}% processing]</div>",
+            f"<div class='status-bar'>[{int(i/len(groups)*100)}% processing]</div>",
             unsafe_allow_html=True,
         )
         log(f"문서 그룹 '{group}' 처리 완료 ✅")
 
-    with zipfile.ZipFile("result_documents.zip", "w") as zipf:
-        for folder, _, files in os.walk(output_dir):
+    with zipfile.ZipFile("result_documents.zip", "w") as z:
+        for root, _, files in os.walk(output_dir):
             for f in files:
-                p = os.path.join(folder, f)
-                zipf.write(p, arcname=os.path.relpath(p, output_dir))
+                p = os.path.join(root, f)
+                z.write(p, arcname=os.path.relpath(p, output_dir))
 
-    with open("result_documents.zip", "rb") as f:
-        zip_placeholder.download_button(
-            "📥 정리된 ZIP 파일 다운로드",
-            f,
-            file_name="result_documents.zip",
-            mime="application/zip",
-        )
+    zip_placeholder.download_button(
+        "📥 정리된 ZIP 파일 다운로드",
+        open("result_documents.zip", "rb"),
+        file_name="result_documents.zip",
+        mime="application/zip",
+    )
 
     status_placeholder.markdown(
         "<div class='status-bar'>[100% complete – 모든 문서 정리 완료]</div>",
