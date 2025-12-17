@@ -68,8 +68,10 @@ st.markdown(
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
-    st.session_state.clear()
-    st.rerun()
+    st.markdown(
+        "<script>window.location.reload();</script>",
+        unsafe_allow_html=True,
+    )
 
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
@@ -97,7 +99,7 @@ with right_col:
     zip_placeholder = st.empty()
 
 # ----------------------------
-# ⚙️ 상태 / 로그
+# ⚙️ 상태 / 로그 (기존 유지)
 # ----------------------------
 progress_placeholder = st.empty()
 progress_text = st.empty()
@@ -134,10 +136,11 @@ embedding_cache = load_cache(EMBED_CACHE)
 group_cache = load_cache(GROUP_CACHE)
 readme_cache = load_cache(README_CACHE)
 
-def h(t): return hashlib.sha256(t.encode("utf-8")).hexdigest()
+def h(t): 
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 # ----------------------------
-# ✨ 공통 유틸
+# ✨ 유틸
 # ----------------------------
 def sanitize_folder_name(name: str) -> str:
     name = (name or "").strip()
@@ -234,7 +237,7 @@ def cluster_documents(files):
     return HDBSCAN(min_cluster_size=2).fit_predict(embed_titles(titles))
 
 # ----------------------------
-# 🚀 메인 로직 (2단계 + README)
+# 🚀 메인 로직 (중복 제거 완료)
 # ----------------------------
 if uploaded_files:
     progress = progress_placeholder.progress(0)
@@ -262,7 +265,7 @@ if uploaded_files:
         main_folder = output_dir / main_group
         main_folder.mkdir(parents=True, exist_ok=True)
 
-        # 📄 대분류 README
+        # 📄 대분류 README만 생성 (❌ 파일 저장 안 함)
         main_readme = generate_readme(main_group, [f.name for f in files])
         (main_folder / "README.md").write_text(main_readme, encoding="utf-8")
 
@@ -282,6 +285,7 @@ if uploaded_files:
             sub_folder = main_folder / sub_group
             sub_folder.mkdir(parents=True, exist_ok=True)
 
+            # ✅ 파일 저장은 여기서만!
             for f in sub_files:
                 (sub_folder / f.name).write_bytes(f.getvalue())
 
