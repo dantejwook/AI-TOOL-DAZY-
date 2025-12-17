@@ -71,7 +71,7 @@ st.markdown(
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
-    st.session_state.clear()   # ← 이 한 줄 추가
+    st.session_state.clear()
     st.rerun()
 
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
@@ -113,10 +113,10 @@ def log(msg):
 # ✨ 추가된 AI 기능 함수
 # ----------------------------
 def embed_titles(titles):
-    client = openai.OpenAI()  # 최신 방식의 클라이언트 생성
+    client = openai.Client()  # ✅ 최신 openai SDK 방식
     response = client.embeddings.create(
-       model="text-embedding-3-large",
-       input=titles
+        model="text-embedding-3-large",
+        input=titles
     )
     return [r.embedding for r in response.data]
 
@@ -135,12 +135,12 @@ def generate_readme(topic, file_names):
     문서 목록:
     {chr(10).join(file_names)}
     """
-    client = openai.OpenAI()
+    client = openai.Client()  # ✅ 최신 openai SDK 방식
     response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role": "user", "content": prompt}],
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
     )
-    return response.choices[0].message["content"].strip()
+    return response.choices[0].message.content.strip()  # ✅ 속성 접근 수정
 
 # ----------------------------
 # 🚀 메인 처리 로직
@@ -174,7 +174,10 @@ if uploaded_files:
             f.write(readme)
 
         progress = int((i / len(groups)) * 100)
-        status_placeholder.markdown(f"<div class='status-bar'>[{progress}% processing ({i}/{len(groups)} complete)]</div>", unsafe_allow_html=True)
+        status_placeholder.markdown(
+            f"<div class='status-bar'>[{progress}% processing ({i}/{len(groups)} complete)]</div>",
+            unsafe_allow_html=True
+        )
         log(f"문서 그룹 '{group}' 처리 완료 ✅")
 
     # ZIP 파일 생성
