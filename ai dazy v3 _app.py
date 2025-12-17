@@ -18,7 +18,11 @@ AUTO_SPLIT_NOTICE = "⚠️ 이 폴더는 파일 수 제한(25개)으로 인해 
 # ----------------------------
 # 🌈 기본 페이지 설정
 # ----------------------------
-st.set_page_config(page_title="AI dazy document sorter", page_icon="🗂️", layout="wide")
+st.set_page_config(
+    page_title="AI dazy document sorter",
+    page_icon="🗂️",
+    layout="wide",
+)
 
 # ----------------------------
 # 🔐 OpenAI API 키 설정
@@ -31,7 +35,7 @@ else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
 
 # ----------------------------
-# 🎨 스타일 (기존 유지)
+# 🎨 스타일
 # ----------------------------
 st.markdown(
     """
@@ -58,7 +62,7 @@ st.markdown(
 )
 
 # ----------------------------
-# 🧭 사이드바 (기존 유지)
+# 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
@@ -67,7 +71,7 @@ if st.sidebar.button("🔁 다시 시작"):
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
-# 📁 메인 UI (기존 유지)
+# 📁 메인 UI
 # ----------------------------
 left_col, right_col = st.columns([1, 1])
 
@@ -79,18 +83,12 @@ with left_col:
         type=["md", "pdf", "txt"],
     )
 
-if uploaded_files:
-    uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
-    if not uploaded_files:
-        st.error("❗ 유효한 파일이 없습니다.")
-        st.stop()
-
 with right_col:
     st.subheader("📦 ZIP 다운로드")
     zip_placeholder = st.empty()
 
 # ----------------------------
-# ⚙️ 상태 / 로그 (기존 유지)
+# ⚙️ 상태 / 로그
 # ----------------------------
 progress_placeholder = st.empty()
 progress_text = st.empty()
@@ -112,22 +110,24 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 def load_cache(p):
     try:
-        return json.loads(p.read_text()) if p.exists() else {}
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     except Exception:
         return {}
 
 def save_cache(p, d):
-    p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
 
 EMBED_CACHE = CACHE_DIR / "embeddings.json"
 GROUP_CACHE = CACHE_DIR / "group_names.json"
 README_CACHE = CACHE_DIR / "readmes.json"
+EXPAND_CACHE = CACHE_DIR / "expands.json"
 
 embedding_cache = load_cache(EMBED_CACHE)
 group_cache = load_cache(GROUP_CACHE)
 readme_cache = load_cache(README_CACHE)
+expand_cache = load_cache(EXPAND_CACHE)
 
-def h(t):
+def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 # ----------------------------
@@ -140,7 +140,6 @@ def sanitize_folder_name(name: str) -> str:
     return name.strip("_") or "기타_문서"
 
 def unique_folder_name(base: str, existing: set) -> str:
-    """같은 이름이 있으면 _1, _2 자동 부여"""
     if base not in existing:
         return base
     i = 1
@@ -148,55 +147,80 @@ def unique_folder_name(base: str, existing: set) -> str:
         i += 1
     return f"{base}_{i}"
 
-# ✅ 파일명 -> 제목 전처리 (접두어 탐지 정확도 ↑)
 def title_from_filename(file_name: str) -> str:
-    # 확장자 제거
     base = file_name.rsplit(".", 1)[0]
-    # 언더스코어/하이픈을 공백으로 바꿔 토큰화가 가능하게
     base = re.sub(r"[_\-]+", " ", base)
-    # 공백 정리
     base = re.sub(r"\s+", " ", base).strip()
     return base
 
-# ✅ (핵심) 3개 이상에서 반복되는 공통 접두어(prefix) 제거
-def normalize_titles_by_common_prefix(titles, min_repeat=3):
+# ----------------------------
+# 🧠 0차 GPT EXPAND (핵심)
+# ----------------------------
+def expand_document_with_gpt(file):
     """
-    titles: ["창업 아이디어 스마트스토어", "창업 아이디어 국밥집", ...]
-    동일한 앞부분(prefix)이 min_repeat개 이상 반복되면 그 prefix를 제거하고 뒤쪽만 반환
+    문서 1개를 의미적으로 확장 (0차 작업)
+    - GPT-5 nano 사용
+    - 캐시 사용
+    - 실패 시 파일명 기반 fallback
     """
-    tokenized = [t.split() for t in titles]
+    key = h(file.name)
+    if key in expand_cache:
+        return expand_cache[key]
 
-    prefix_counts = {}
-    for tokens in tokenized:
-        # prefix 길이 1 ~ (len-1) 까지만 (전체 제거 방지)
-        for i in range(1, len(tokens)):
-            prefix = " ".join(tokens[:i])
-            prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+    fallback_title = title_from_filename(file.name)
 
-    # 조건 충족하는 prefix 후보들
-    candidates = [p for p, c in prefix_counts.items() if c >= min_repeat]
-    if not candidates:
-        return titles
+    prompt = f"""
+다음 문서를 분류하기 쉽게 의미적으로 정규화하라.
+분류나 그룹핑은 하지 말고, 의미만 추출하라.
 
-    # 가장 "긴" prefix를 선택 (ex: '창업'보다 '창업 아이디어' 우선)
-    common_prefix = max(candidates, key=lambda x: (len(x.split()), len(x)))
+출력은 반드시 JSON 하나만 출력한다.
 
-    normalized = []
-    for t in titles:
-        if t.startswith(common_prefix):
-            trimmed = t[len(common_prefix):].strip()
-            normalized.append(trimmed if trimmed else t)
-        else:
-            normalized.append(t)
+형식:
+{{
+  "canonical_title": "...",
+  "keywords": ["...", "..."],
+  "domain": "...",
+  "embedding_text": "..."
+}}
 
-    return normalized
+문서 파일명:
+{file.name}
+"""
+
+    try:
+        r = openai.ChatCompletion.create(
+            model="gpt-5-nano",
+            messages=[
+                {"role": "system", "content": "너는 문서를 분류하기 쉽게 정규화하는 역할이다."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+        )
+
+        content = r["choices"][0]["message"]["content"].strip()
+        data = json.loads(content)
+
+        if "embedding_text" not in data:
+            raise ValueError("embedding_text 누락")
+
+    except Exception:
+        data = {
+            "canonical_title": fallback_title,
+            "keywords": fallback_title.split(),
+            "domain": "기타",
+            "embedding_text": f"제목: {fallback_title}",
+        }
+
+    expand_cache[key] = data
+    save_cache(EXPAND_CACHE, expand_cache)
+    return data
 
 # ----------------------------
-# ✨ OpenAI / 임베딩
+# ✨ 임베딩
 # ----------------------------
-def embed_titles(titles):
+def embed_texts(texts):
     missing = []
-    for t in titles:
+    for t in texts:
         if h(t) not in embedding_cache:
             missing.append(t)
 
@@ -209,8 +233,41 @@ def embed_titles(titles):
             embedding_cache[h(t)] = d["embedding"]
         save_cache(EMBED_CACHE, embedding_cache)
 
-    return [embedding_cache[h(t)] for t in titles]
+    return [embedding_cache[h(t)] for t in texts]
 
+# ----------------------------
+# 📦 클러스터링
+# ----------------------------
+def cluster_documents(files):
+    expanded = [expand_document_with_gpt(f) for f in files]
+    embed_inputs = [e["embedding_text"] for e in expanded]
+    vectors = embed_texts(embed_inputs)
+    return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
+
+# ----------------------------
+# 🔁 자동 재분해
+# ----------------------------
+def recursive_cluster(files, depth=0):
+    if len(files) <= MAX_FILES_PER_CLUSTER or depth >= MAX_RECURSION_DEPTH:
+        return [files]
+
+    labels = cluster_documents(files)
+    groups = {}
+    for f, l in zip(files, labels):
+        groups.setdefault(l, []).append(f)
+
+    result = []
+    for g in groups.values():
+        if len(g) > MAX_FILES_PER_CLUSTER:
+            result.extend(recursive_cluster(g, depth + 1))
+        else:
+            result.append(g)
+
+    return result
+
+# ----------------------------
+# ✨ GPT 폴더명 / README
+# ----------------------------
 def generate_group_name(names):
     k = h("||".join(sorted(names)))
     if k in group_cache:
@@ -242,7 +299,7 @@ def generate_group_name(names):
     return name
 
 def generate_readme(topic, files, auto_split=False):
-    k = h(("split" if auto_split else "nosplit") + "||" + topic + "||" + "||".join(sorted(files)))
+    k = h(("split" if auto_split else "nosplit") + topic + "||" + "||".join(sorted(files)))
     if k in readme_cache:
         return readme_cache[k]
 
@@ -271,52 +328,15 @@ def generate_readme(topic, files, auto_split=False):
     save_cache(README_CACHE, readme_cache)
     return final
 
-def cluster_documents(files):
-    # ✅ 파일명 -> 제목 텍스트로 변환
-    raw_titles = [title_from_filename(f.name) for f in files]
-
-    # ✅ 3개 이상 반복되는 공통 prefix 제거
-    norm_titles = normalize_titles_by_common_prefix(raw_titles, min_repeat=3)
-
-    # ✅ 클러스터링용 임베딩 입력 (prefix 제거된 제목 기반)
-    embed_inputs = [f"title: {t}" for t in norm_titles]
-
-    vectors = embed_titles(embed_inputs)
-    return HDBSCAN(min_cluster_size=5, min_samples=1).fit_predict(vectors)
-
-# ----------------------------
-# 🔁 자동 재분해
-# ----------------------------
-def recursive_cluster(files, depth=0):
-    if len(files) <= MAX_FILES_PER_CLUSTER or depth >= MAX_RECURSION_DEPTH:
-        return [files]
-
-    labels = cluster_documents(files)
-    groups = {}
-    for f, l in zip(files, labels):
-        groups.setdefault(l, []).append(f)
-
-    result = []
-    for g in groups.values():
-        if len(g) > MAX_FILES_PER_CLUSTER:
-            result.extend(recursive_cluster(g, depth + 1))
-        else:
-            result.append(g)
-
-    final = []
-    for g in result:
-        if len(g) > MAX_FILES_PER_CLUSTER:
-            for i in range(0, len(g), MAX_FILES_PER_CLUSTER):
-                final.append(g[i:i + MAX_FILES_PER_CLUSTER])
-        else:
-            final.append(g)
-
-    return final
-
 # ----------------------------
 # 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
+    uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
+    if not uploaded_files:
+        st.error("❗ 유효한 파일이 없습니다.")
+        st.stop()
+
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
     log("파일 업로드 완료")
@@ -329,27 +349,23 @@ if uploaded_files:
     done = 0
 
     for cluster_files in top_clusters:
-        auto_split = len(cluster_files) > MAX_FILES_PER_CLUSTER
-        main_group = generate_group_name([f.name.split(".")[0] for f in cluster_files])
-
+        main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
         main_folder = output_dir / main_group
         main_folder.mkdir(parents=True, exist_ok=True)
 
-        # 📄 대분류 README
         main_readme = generate_readme(
             main_group,
             [f.name for f in cluster_files],
-            auto_split=auto_split,
+            auto_split=len(cluster_files) > MAX_FILES_PER_CLUSTER,
         )
         (main_folder / "★README.md").write_text(main_readme, encoding="utf-8")
 
-        # 🔹 중분류
-        sub_clusters = recursive_cluster(cluster_files)
         used_names = set()
+        sub_clusters = recursive_cluster(cluster_files)
 
         for sub_files in sub_clusters:
-            base_name = generate_group_name([f.name.split(".")[0] for f in sub_files])
-            sub_group = unique_folder_name(base_name, used_names)
+            base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
+            sub_group = unique_folder_name(base, used_names)
             used_names.add(sub_group)
 
             sub_folder = main_folder / sub_group
@@ -396,8 +412,5 @@ if uploaded_files:
 
 else:
     progress_placeholder.progress(0)
-    progress_text.markdown(
-        "<div class='status-bar'>[대기 중]</div>",
-        unsafe_allow_html=True,
-    )
+    progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
     log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
