@@ -89,6 +89,10 @@ with left_col:
         type=["md", "pdf", "txt"],
     )
 
+# 🔹 업로드 파일 유효성 검사 (None, 이름 없는 파일 필터링)
+if uploaded_files:
+    uploaded_files = [f for f in uploaded_files if f is not None and f.name.strip()]
+
 with right_col:
     st.subheader("📦 ZIP 다운로드")
     zip_placeholder = st.empty()
@@ -109,11 +113,12 @@ def log(msg):
 # ✨ 추가된 AI 기능 함수
 # ----------------------------
 def embed_titles(titles):
-    response = openai.embeddings.create(
-        model="text-embedding-3-large",
-        input=titles
-    )
-    return [r.embedding for r in response.data]
+client = openai.OpenAI()  # 최신 방식의 클라이언트 생성
+response = client.embeddings.create(
+    model="text-embedding-3-large",
+    input=titles
+)
+return [r.embedding for r in response.data]
 
 def cluster_documents(files):
     titles = [f"title: {f.name.split('.')[0]}" for f in files]
@@ -130,11 +135,12 @@ def generate_readme(topic, file_names):
     문서 목록:
     {chr(10).join(file_names)}
     """
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content.strip()
+client = openai.OpenAI()
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": prompt}],
+)
+return response.choices[0].message["content"].strip()
 
 # ----------------------------
 # 🚀 메인 처리 로직
