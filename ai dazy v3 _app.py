@@ -4,7 +4,6 @@ import zipfile
 import os
 from pathlib import Path
 import openai
-from openai import OpenAI 
 from sklearn.cluster import HDBSCAN
 
 # ----------------------------
@@ -20,7 +19,7 @@ openai.api_key = (
 )
 
 if not openai.api_key:
-    st.sidebar.error("🚨 OpenAI API Key가 없습니다. secrets.toml 또는 환경변수를 확인하세요.")
+    st.sidebar.error("🚨 OpenAI API Key가 없습니다.")
     st.stop()
 else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
@@ -31,10 +30,7 @@ else:
 st.markdown(
     """
     <style>
-    body {
-        background-color: #f8f9fc;
-        font-family: 'Pretendard', sans-serif;
-    }
+    body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
     .stButton>button {
         border-radius: 10px;
         background-color: #4a6cf7;
@@ -42,10 +38,6 @@ st.markdown(
         border: none;
         padding: 0.6em 1.2em;
         font-weight: 600;
-        transition: 0.2s;
-    }
-    .stButton>button:hover {
-        background-color: #3451c1;
     }
     .status-bar {
         background-color: #595656;
@@ -62,7 +54,6 @@ st.markdown(
         height: 120px;
         overflow-y: auto;
         font-size: 0.85em;
-        border: 1px solid #dee2e6;
     }
     </style>
     """,
@@ -76,8 +67,6 @@ st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
     st.session_state.clear()
     st.rerun()
-
-lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
 # 📁 메인 UI 구성
@@ -93,45 +82,41 @@ with left_col:
     )
 
 if uploaded_files:
-    # 🔹 업로드 파일 유효성 검사
-    uploaded_files = [f for f in uploaded_files if f and hasattr(f, "name") and f.name.strip()]
-    if not uploaded_files:
-        st.error("❗ 유효한 파일이 없습니다.")
-        st.stop()
+    uploaded_files = [f for f in uploaded_files if f and hasattr(f, "name")]
 
 with right_col:
     st.subheader("📦 ZIP 다운로드")
     zip_placeholder = st.empty()
 
 # ----------------------------
-# ⚙️ 프로세싱 + 상태 표시
+# ⚙️ 로그
 # ----------------------------
 status_placeholder = st.empty()
 log_box = st.empty()
-
 log_messages = []
+
 def log(msg):
     log_messages.append(msg)
-    log_html = "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>"
-    log_box.markdown(log_html, unsafe_allow_html=True)
+    log_box.markdown(
+        "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>",
+        unsafe_allow_html=True,
+    )
 
 # ----------------------------
-# ✨ 추가된 AI 기능 함수
+# ✨ AI 기능 (🔥 완전 안정 버전)
 # ----------------------------
 def embed_titles(titles):
-    client = OpenAI(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
-    response = client.embeddings.create(
+    response = openai.Embedding.create(
         model="text-embedding-3-large",
         input=titles
     )
-    return [r.embedding for r in response.data]
+    return [d["embedding"] for d in response["data"]]
 
 def cluster_documents(files):
-    titles = [f"title: {f.name.split('.')[0]}" for f in files if hasattr(f, "name")]
+    titles = [f"title: {f.name.split('.')[0]}" for f in files]
     vectors = embed_titles(titles)
-    clusterer = HDBSCAN(min_cluster_size=2, metric="euclidean")
-    labels = clusterer.fit_predict(vectors)
-    return labels
+    clusterer = HDBSCAN(min_cluster_size=2)
+    return clusterer.fit_predict(vectors)
 
 def generate_readme(topic, file_names):
     prompt = f"""
@@ -141,90 +126,63 @@ def generate_readme(topic, file_names):
     문서 목록:
     {chr(10).join(file_names)}
     """
-    client = OpenAI(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
-    response = client.chat.completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
     )
-    return response.choices[0].message.content.strip()
+    return response["choices"][0]["message"]["content"].strip()
 
 # ----------------------------
-# 🚀 메인 처리 로직
+# 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
     log("파일 업로드 완료 ✅")
-    total = len(uploaded_files)
-    output_dir = Path("output_docs")
-    output_dir.mkdir(exist_ok=True, parents=True)  # 🔒 안전하게 디렉토리 생성
 
-    # 🔹 문서 의미 기반 자동 분류
+    output_dir = Path("output_docs")
+    output_dir.mkdir(exist_ok=True, parents=True)
+
     try:
         labels = cluster_documents(uploaded_files)
     except Exception as e:
-        st.error(f"⚠️ 문서 클러스터링 실패: {str(e)}")
+        st.error(f"문서 클러스터링 실패: {e}")
         st.stop()
 
     groups = {}
-    for file, label in zip(uploaded_files, labels):
-        group_name = f"Group_{label if label >= 0 else 'Unclassified'}"
-        groups.setdefault(group_name, []).append(file)
+    for f, label in zip(uploaded_files, labels):
+        name = f"Group_{label if label >= 0 else 'Unclassified'}"
+        groups.setdefault(name, []).append(f)
 
-    # 🔹 그룹별 저장 및 README 생성
-    for i, (group, files) in enumerate(groups.items(), start=1):
+    for i, (group, files) in enumerate(groups.items(), 1):
         folder = output_dir / group
-        folder.mkdir(exist_ok=True, parents=True)
+        folder.mkdir(exist_ok=True)
 
-        for file in files:
-            try:
-                file_path = folder / file.name
-                with open(file_path, "wb") as f:
-                    f.write(file.read())
-            except Exception as e:
-                log(f"❗ 파일 저장 실패: {file.name} - {str(e)}")
-                continue
+        for f in files:
+            with open(folder / f.name, "wb") as out:
+                out.write(f.read())
 
-        try:
-            readme = generate_readme(group, [f.name for f in files])
-            with open(folder / "README.md", "w", encoding="utf-8") as f:
-                f.write(readme)
-        except Exception as e:
-            log(f"❗ README 생성 실패: {group} - {str(e)}")
+        readme = generate_readme(group, [f.name for f in files])
+        with open(folder / "README.md", "w", encoding="utf-8") as r:
+            r.write(readme)
 
         progress = int((i / len(groups)) * 100)
         status_placeholder.markdown(
-            f"<div class='status-bar'>[{progress}% processing ({i}/{len(groups)} complete)]</div>",
-            unsafe_allow_html=True
-        )
-        log(f"문서 그룹 '{group}' 처리 완료 ✅")
-
-    # 🔹 ZIP 압축 생성
-    zip_filename = "result_documents.zip"
-    try:
-        with zipfile.ZipFile(zip_filename, "w") as zipf:
-            for folder, _, files in os.walk(output_dir):
-                for file in files:
-                    file_path = os.path.join(folder, file)
-                    zipf.write(file_path, arcname=os.path.relpath(file_path, output_dir))
-
-        with open(zip_filename, "rb") as f:
-            zip_placeholder.download_button(
-                label="📥 정리된 ZIP 파일 다운로드",
-                data=f,
-                file_name=zip_filename,
-                mime="application/zip",
-            )
-
-        log("✅ 모든 파일이 성공적으로 정리되었습니다.")
-        status_placeholder.markdown(
-            f"<div class='status-bar'>[100% complete – 모든 문서 정리 완료]</div>",
+            f"<div class='status-bar'>[{progress}% processing]</div>",
             unsafe_allow_html=True,
         )
-    except Exception as e:
-        st.error(f"❌ ZIP 생성 실패: {str(e)}")
 
-else:
-    status_placeholder.markdown(
-        "<div class='status-bar'>[0% processing (0/0 complete)]</div>",
-        unsafe_allow_html=True,
-    )
-    log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
+    zip_name = "result_documents.zip"
+    with zipfile.ZipFile(zip_name, "w") as zipf:
+        for folder, _, files in os.walk(output_dir):
+            for file in files:
+                p = os.path.join(folder, file)
+                zipf.write(p, arcname=os.path.relpath(p, output_dir))
+
+    with open(zip_name, "rb") as f:
+        zip_placeholder.download_button(
+            "📥 정리된 ZIP 파일 다운로드",
+            f,
+            zip_name,
+            "application/zip",
+        )
+
+    log("✅ 모든 문서 처리 완료")
