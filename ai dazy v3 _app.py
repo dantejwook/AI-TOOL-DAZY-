@@ -136,13 +136,6 @@ with left_col:
     with header_col:
         st.subheader("📤 파일 업로드")
 
-    with action_col:
-        if st.session_state["uploaded_files_data"]:
-            st.markdown("<div style='height: 36px'></div>", unsafe_allow_html=True)
-            if st.button("🧽 전체 삭제", key="clear_uploads"):
-                st.session_state["uploaded_files_data"] = []
-                st.rerun()
-
     uploaded = st.file_uploader(
         "문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
