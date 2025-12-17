@@ -66,10 +66,6 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
-
-if st.sidebar.button("🔁 다시 시작"):
-    st.rerun()
-
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
