@@ -239,8 +239,8 @@ def embed_texts(texts):
     missing = [t for t in texts if h(t) not in embedding_cache]
 
     if missing:
-        r = openai.Embedding.create(
-            model="text-embedding-3-large",
+        r = openai.ChatCompletion.create(
+            model="gpt-5-nano",
             input=missing,
         )
         for t, d in zip(missing, r["data"]):
@@ -298,7 +298,7 @@ def generate_group_name(names):
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
+        model="gpt-5-nano",
         messages=[
             {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
             {"role": "user", "content": prompt + "\n" + "\n".join(names)},
