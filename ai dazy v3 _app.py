@@ -118,7 +118,7 @@ def log(msg):
 # ✨ 추가된 AI 기능 함수
 # ----------------------------
 def embed_titles(titles):
-    client = openai.Client(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
+    client = OpenAI(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
     response = client.embeddings.create(
         model="text-embedding-3-large",
         input=titles
@@ -140,7 +140,7 @@ def generate_readme(topic, file_names):
     문서 목록:
     {chr(10).join(file_names)}
     """
-    client = openai.Client(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
+    client = OpenAI(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
