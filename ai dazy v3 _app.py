@@ -109,9 +109,9 @@ for file, label in zip(uploaded_files, labels):
     groups.setdefault(group_name, []).append(file)
 
 # Step 3. 그룹별 폴더 생성 및 README 작성
-    for i, (group, files) in enumerate(groups.items(), start=1):
-        folder = output_dir / group
-        folder.mkdir(exist_ok=True)
+for i, (group, files) in enumerate(groups.items(), start=1):
+    folder = output_dir / group
+    folder.mkdir(exist_ok=True)
 
     for file in files:
         file_path = folder / file.name
