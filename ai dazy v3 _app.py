@@ -1,10 +1,8 @@
 import streamlit as st
-import time
 import zipfile
 import os
 from pathlib import Path
 import openai
-from openai import OpenAI 
 from sklearn.cluster import HDBSCAN
 
 # ----------------------------
@@ -93,7 +91,6 @@ with left_col:
     )
 
 if uploaded_files:
-    # 🔹 업로드 파일 유효성 검사
     uploaded_files = [f for f in uploaded_files if f and hasattr(f, "name") and f.name.strip()]
     if not uploaded_files:
         st.error("❗ 유효한 파일이 없습니다.")
@@ -104,34 +101,26 @@ with right_col:
     zip_placeholder = st.empty()
 
 # ----------------------------
-# ⚙️ 프로세싱 + 상태 표시
+# ⚙️ 상태 표시 / 로그
 # ----------------------------
 status_placeholder = st.empty()
 log_box = st.empty()
-
 log_messages = []
+
 def log(msg):
     log_messages.append(msg)
     log_html = "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>"
     log_box.markdown(log_html, unsafe_allow_html=True)
 
 # ----------------------------
-# ✨ 추가된 AI 기능 함수
+# ✨ OpenAI 기반 임베딩 / 생성 함수 (v1.52 방식)
 # ----------------------------
 def embed_titles(titles):
-    client = OpenAI(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
-    response = client.embeddings.create(
+    response = openai.embeddings.create(
         model="text-embedding-3-large",
         input=titles
     )
     return [r.embedding for r in response.data]
-
-def cluster_documents(files):
-    titles = [f"title: {f.name.split('.')[0]}" for f in files if hasattr(f, "name")]
-    vectors = embed_titles(titles)
-    clusterer = HDBSCAN(min_cluster_size=2, metric="euclidean")
-    labels = clusterer.fit_predict(vectors)
-    return labels
 
 def generate_readme(topic, file_names):
     prompt = f"""
@@ -141,12 +130,17 @@ def generate_readme(topic, file_names):
     문서 목록:
     {chr(10).join(file_names)}
     """
-    client = OpenAI(api_key=openai.api_key)  # 🔐 안전하게 API Key 전달
-    response = client.chat.completions.create(
+    response = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content.strip()
+
+def cluster_documents(files):
+    titles = [f"title: {f.name.split('.')[0]}" for f in files if hasattr(f, "name")]
+    vectors = embed_titles(titles)
+    clusterer = HDBSCAN(min_cluster_size=2, metric="euclidean")
+    return clusterer.fit_predict(vectors)
 
 # ----------------------------
 # 🚀 메인 처리 로직
@@ -155,9 +149,8 @@ if uploaded_files:
     log("파일 업로드 완료 ✅")
     total = len(uploaded_files)
     output_dir = Path("output_docs")
-    output_dir.mkdir(exist_ok=True, parents=True)  # 🔒 안전하게 디렉토리 생성
+    output_dir.mkdir(exist_ok=True, parents=True)
 
-    # 🔹 문서 의미 기반 자동 분류
     try:
         labels = cluster_documents(uploaded_files)
     except Exception as e:
@@ -169,7 +162,6 @@ if uploaded_files:
         group_name = f"Group_{label if label >= 0 else 'Unclassified'}"
         groups.setdefault(group_name, []).append(file)
 
-    # 🔹 그룹별 저장 및 README 생성
     for i, (group, files) in enumerate(groups.items(), start=1):
         folder = output_dir / group
         folder.mkdir(exist_ok=True, parents=True)
@@ -197,7 +189,7 @@ if uploaded_files:
         )
         log(f"문서 그룹 '{group}' 처리 완료 ✅")
 
-    # 🔹 ZIP 압축 생성
+    # ZIP 압축 생성
     zip_filename = "result_documents.zip"
     try:
         with zipfile.ZipFile(zip_filename, "w") as zipf:
