@@ -296,7 +296,7 @@ if uploaded_files:
 
         readme = AUTO_SPLIT_NOTICE if auto_split else ""
         readme += generate_readme(main_group, [f.name for f in cluster_files])
-        (main_folder / "README.md").write_text(readme, encoding="utf-8")
+        (main_folder / "★README.md").write_text(readme, encoding="utf-8")
 
         sub_clusters = recursive_cluster(cluster_files)
         used = set()
@@ -319,7 +319,7 @@ if uploaded_files:
                 f"{main_group} - {sub_group}",
                 [f.name for f in sub_files],
             )
-            (sub_folder / "README.md").write_text(sub_readme, encoding="utf-8")
+            (sub_folder / "★README.md").write_text(sub_readme, encoding="utf-8")
 
         done += 1
         pct = int(done / total * 100)
