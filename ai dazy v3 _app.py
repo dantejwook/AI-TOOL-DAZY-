@@ -32,14 +32,14 @@ st.markdown(
         background-color: #3451c1;
     }
     .status-bar {
-        background-color: #e9ecef;
+        background-color: #595656;
         border-radius: 6px;
         padding: 0.5em;
         margin-top: 20px;
         font-size: 0.9em;
     }
     .log-box {
-        background-color: #fff;
+        background-color: #595656;
         border-radius: 6px;
         padding: 0.8em;
         margin-top: 10px;
