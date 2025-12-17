@@ -66,10 +66,6 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
-
-if st.sidebar.button("🔁 다시 시작"):
-    st.rerun()
-
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
@@ -136,6 +132,14 @@ left_col, right_col = st.columns([1, 1])
 
 with left_col:
     st.subheader("📤 파일 업로드")
+        
+with action_col:
+    if st.session_state.uploaded_files:
+        st.markdown("<div style='height: 36px'></div>", unsafe_allow_html=True)
+        if st.button("🧽 전체 삭제"):
+            st.session_state.uploaded_files = []
+            st.rerun()
+
     uploaded_files = st.file_uploader(
         "문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
