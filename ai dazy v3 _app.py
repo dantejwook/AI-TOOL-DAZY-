@@ -16,7 +16,7 @@ st.markdown(
     """
     <style>
     body {
-        background-color: #f8f9fc;
+        background-color: #0a0a0a;
         font-family: 'Pretendard', sans-serif;
     }
     .stButton>button {
