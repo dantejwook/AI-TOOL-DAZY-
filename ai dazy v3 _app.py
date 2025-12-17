@@ -24,7 +24,11 @@ if not api_key:
 else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
 
-os.environ["OPENAI_API_KEY"] = api_key
+# 🔥 Streamlit Cloud proxy 강제 제거 (중요)
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("HTTPS_PROXY", None)
+os.environ.pop("ALL_PROXY", None)
+
 client = OpenAI()
 
 # ----------------------------
