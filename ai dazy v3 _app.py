@@ -239,8 +239,8 @@ def embed_texts(texts):
     missing = [t for t in texts if h(t) not in embedding_cache]
 
     if missing:
-        r = openai.ChatCompletion.create(
-            model="gpt-5-nano",
+        r = openai.Embedding.create(
+            model="text-embedding-3-large",
             input=missing,
         )
         for t, d in zip(missing, r["data"]):
