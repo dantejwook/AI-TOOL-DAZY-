@@ -262,7 +262,7 @@ if uploaded_files:
 
         # 📄 대분류 README만 생성 (❌ 파일 저장 안 함)
         main_readme = generate_readme(main_group, [f.name for f in files])
-        (main_folder / "README.md").write_text(main_readme, encoding="utf-8")
+        (main_folder / "@README.md").write_text(main_readme, encoding="utf-8")
 
         # 🔹 중분류
         sub_labels = cluster_documents(files)
@@ -289,7 +289,7 @@ if uploaded_files:
                 f"{main_group} - {sub_group}",
                 [f.name for f in sub_files],
             )
-            (sub_folder / "README.md").write_text(sub_readme, encoding="utf-8")
+            (sub_folder / "@README.md").write_text(sub_readme, encoding="utf-8")
 
         done += 1
         pct = int(done / total * 100)
