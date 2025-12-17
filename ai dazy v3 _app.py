@@ -103,23 +103,19 @@ def reset_cache():
     expand_cache.clear()
 
 def reset_output():
-    output_dir = Path("output_docs")
-    zip_path = Path("result_documents.zip")
+    if Path("output_docs").exists():
+        shutil.rmtree("output_docs")
+    if Path("result_documents.zip").exists():
+        Path("result_documents.zip").unlink()
 
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
-    if zip_path.exists():
-        zip_path.unlink()
-
-# ▶ 사이드바 버튼 (분리)
 if st.sidebar.button("🧹 캐시 초기화"):
     reset_cache()
-    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
+    st.sidebar.success("✅ 캐시 초기화 완료")
     st.rerun()
 
 if st.sidebar.button("🗑️ 결과 폴더 초기화"):
     reset_output()
-    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
+    st.sidebar.success("✅ 결과 폴더 초기화 완료")
     st.rerun()
 
 def h(t: str):
@@ -130,25 +126,38 @@ def h(t: str):
 # ----------------------------
 left_col, right_col = st.columns([1, 1])
 
-with left_col:
-    st.subheader("📤 파일 업로드")
-        
-with action_col:
-    if st.session_state.uploaded_files:
-        st.markdown("<div style='height: 36px'></div>", unsafe_allow_html=True)
-        if st.button("🧽 전체 삭제"):
-            st.session_state.uploaded_files = []
-            st.rerun()
+# ▶ session_state 초기화
+if "uploaded_files_data" not in st.session_state:
+    st.session_state["uploaded_files_data"] = []
 
-    uploaded_files = st.file_uploader(
+with left_col:
+    header_col, action_col = st.columns([4, 1])
+
+    with header_col:
+        st.subheader("📤 파일 업로드")
+
+    with action_col:
+        if st.session_state["uploaded_files_data"]:
+            st.markdown("<div style='height: 36px'></div>", unsafe_allow_html=True)
+            if st.button("🧽 전체 삭제", key="clear_uploads"):
+                st.session_state["uploaded_files_data"] = []
+                st.rerun()
+
+    uploaded = st.file_uploader(
         "문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
+        key="uploader_widget",
     )
+
+    # ▶ uploader 결과를 우리가 관리하는 state로 복사
+    st.session_state["uploaded_files_data"] = uploaded or []
 
 with right_col:
     st.subheader("📦 ZIP 다운로드")
     zip_placeholder = st.empty()
+
+uploaded_files = st.session_state["uploaded_files_data"]
 
 # ----------------------------
 # ⚙️ 상태 / 로그
@@ -183,10 +192,7 @@ def unique_folder_name(base: str, existing: set) -> str:
     return f"{base}_{i}"
 
 def title_from_filename(file_name: str) -> str:
-    base = file_name.rsplit(".", 1)[0]
-    base = re.sub(r"[_\-]+", " ", base)
-    base = re.sub(r"\s+", " ", base).strip()
-    return base
+    return re.sub(r"\s+", " ", re.sub(r"[_\-]+", " ", file_name.rsplit(".", 1)[0])).strip()
 
 # ----------------------------
 # 🧠 0차 GPT EXPAND
@@ -228,7 +234,6 @@ def expand_document_with_gpt(file):
         data = json.loads(r["choices"][0]["message"]["content"])
         if "embedding_text" not in data:
             raise ValueError
-
     except Exception:
         data = {
             "canonical_title": fallback_title,
@@ -298,12 +303,6 @@ def generate_group_name(names):
     prompt = """
 다음 문서 제목들의 공통 주제를 대표하는
 짧고 명확한 한글 폴더명 하나만 출력하세요.
-
-규칙:
-- 2~4 단어
-- 조사 사용 금지
-- 숫자/번호 금지
-- 설명 금지
 """
 
     r = openai.ChatCompletion.create(
@@ -320,31 +319,25 @@ def generate_group_name(names):
     save_cache(GROUP_CACHE, group_cache)
     return name
 
-def generate_readme(topic, files, auto_split=False):
-    k = h(("split" if auto_split else "nosplit") + topic + "||" + "||".join(sorted(files)))
+def generate_readme(topic, files):
+    k = h(topic + "||" + "||".join(sorted(files)))
     if k in readme_cache:
         return readme_cache[k]
 
-    notice = AUTO_SPLIT_NOTICE if auto_split else ""
-
     prompt = f"""
-{notice}다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
+다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
 각 문서의 관계와 활용 목적을 설명하는 README.md를 작성하세요.
-반드시 한국어로 작성하세요.
-
-문서 목록:
-{chr(10).join(files)}
 """
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 한국어로만 README를 작성한다."},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": prompt + "\n" + "\n".join(files)},
         ],
     )
 
-    content = notice + r["choices"][0]["message"]["content"].strip()
+    content = r["choices"][0]["message"]["content"]
     readme_cache[k] = content
     save_cache(README_CACHE, readme_cache)
     return content
@@ -353,59 +346,33 @@ def generate_readme(topic, files, auto_split=False):
 # 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
-    uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
-    if not uploaded_files:
-        st.stop()
-
-    # ▶ 실행 시 결과 폴더 자동 초기화
     reset_output()
-
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True)
 
     progress = progress_placeholder.progress(0)
-    progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
     log("파일 업로드 완료")
 
-    top_clusters = recursive_cluster(uploaded_files)
-    total = len(top_clusters)
-    done = 0
+    clusters = recursive_cluster(uploaded_files)
+    total = len(clusters)
 
-    for cluster_files in top_clusters:
-        main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
-        main_folder = output_dir / main_group
-        main_folder.mkdir(parents=True, exist_ok=True)
+    for i, cluster_files in enumerate(clusters, 1):
+        group = generate_group_name([f.name for f in cluster_files])
+        folder = output_dir / group
+        folder.mkdir(parents=True, exist_ok=True)
 
-        (main_folder / "★README.md").write_text(
-            generate_readme(main_group, [f.name for f in cluster_files]),
+        for f in cluster_files:
+            (folder / f.name).write_bytes(f.getvalue())
+
+        (folder / "★README.md").write_text(
+            generate_readme(group, [f.name for f in cluster_files]),
             encoding="utf-8",
         )
 
-        used_names = set()
-        for sub_files in recursive_cluster(cluster_files):
-            base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
-            sub_group = unique_folder_name(base, used_names)
-            used_names.add(sub_group)
+        progress.progress(int(i / total * 100))
+        log(f"{group} 처리 완료")
 
-            sub_folder = main_folder / sub_group
-            sub_folder.mkdir(parents=True, exist_ok=True)
-
-            for f in sub_files:
-                (sub_folder / f.name).write_bytes(f.getvalue())
-
-            (sub_folder / "★README.md").write_text(
-                generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
-                encoding="utf-8",
-            )
-
-        done += 1
-        pct = int(done / total * 100)
-        progress.progress(pct)
-        progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
-        log(f"{main_group} 처리 완료")
-
-    zip_path = Path("result_documents.zip")
-    with zipfile.ZipFile(zip_path, "w") as z:
+    with zipfile.ZipFile("result_documents.zip", "w") as z:
         for root, _, files in os.walk(output_dir):
             for f in files:
                 p = os.path.join(root, f)
@@ -413,16 +380,12 @@ if uploaded_files:
 
     zip_placeholder.download_button(
         "📥 정리된 ZIP 파일 다운로드",
-        open(zip_path, "rb"),
-        file_name=zip_path.name,
+        open("result_documents.zip", "rb"),
+        file_name="result_documents.zip",
         mime="application/zip",
     )
 
-    progress.progress(100)
-    progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
 
 else:
-    progress_placeholder.progress(0)
-    progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
     log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
