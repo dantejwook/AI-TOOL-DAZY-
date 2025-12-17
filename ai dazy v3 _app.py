@@ -69,7 +69,11 @@ st.markdown(
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
     st.markdown(
-        "<script>window.location.reload();</script>",
+        """
+        <script>
+            window.location.reload();
+        </script>
+        """,
         unsafe_allow_html=True,
     )
 
