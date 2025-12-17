@@ -2,8 +2,11 @@ import streamlit as st
 import zipfile
 import os
 from pathlib import Path
-import openai
-from sklearn.cluster import HDBSCAN
+from openai import OpenAI
+from hdbscan import HDBSCAN
+import re
+import json
+import hashlib
 
 # ----------------------------
 # 🌈 기본 페이지 설정
@@ -13,15 +16,15 @@ st.set_page_config(page_title="AI dazy document sorter", page_icon="🗂️", la
 # ----------------------------
 # 🔐 OpenAI API 키 설정
 # ----------------------------
-openai.api_key = (
-    st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-)
+api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
-if not openai.api_key:
+if not api_key:
     st.sidebar.error("🚨 OpenAI API Key가 없습니다. secrets.toml 또는 환경변수를 확인하세요.")
     st.stop()
 else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
+
+client = OpenAI(api_key=api_key)
 
 # ----------------------------
 # 🎨 스타일 커스터마이징
@@ -113,16 +116,92 @@ def log(msg):
     log_box.markdown(log_html, unsafe_allow_html=True)
 
 # ----------------------------
-# ✨ OpenAI 기반 임베딩 / 생성 함수 (v1.52 방식)
+# 🧠 캐시 시스템
+# ----------------------------
+CACHE_DIR = Path(".cache")
+CACHE_DIR.mkdir(exist_ok=True)
+
+EMBED_CACHE = CACHE_DIR / "embeddings.json"
+GROUP_CACHE = CACHE_DIR / "group_names.json"
+README_CACHE = CACHE_DIR / "readmes.json"
+
+def load_cache(path):
+    return json.loads(path.read_text()) if path.exists() else {}
+
+def save_cache(path, data):
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+embedding_cache = load_cache(EMBED_CACHE)
+group_cache = load_cache(GROUP_CACHE)
+readme_cache = load_cache(README_CACHE)
+
+def hash_key(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+# ----------------------------
+# ✨ OpenAI + 캐시 적용 함수
 # ----------------------------
 def embed_titles(titles):
-    response = openai.embeddings.create(
-        model="text-embedding-3-large",
-        input=titles
+    vectors = []
+    to_request = []
+
+    for t in titles:
+        key = hash_key(t)
+        if key in embedding_cache:
+            vectors.append(embedding_cache[key])
+        else:
+            to_request.append((t, key))
+
+    if to_request:
+        response = client.embeddings.create(
+            model="text-embedding-3-large",
+            input=[t for t, _ in to_request]
+        )
+        for emb, (_, key) in zip(response.data, to_request):
+            embedding_cache[key] = emb.embedding
+            vectors.append(emb.embedding)
+        save_cache(EMBED_CACHE, embedding_cache)
+
+    return vectors
+
+def generate_group_name(file_names):
+    key = hash_key("||".join(sorted(file_names)))
+    if key in group_cache:
+        return group_cache[key]
+
+    prompt = f"""
+    다음 문서 제목들을 보고 공통 주제를 대표하는
+    짧고 명확한 한글 폴더명을 하나 생성하세요.
+
+    규칙:
+    - 뱀_상자
+    - 2~4 단어
+    - 설명 없이 이름만 출력
+
+    문서 제목:
+    {chr(10).join(file_names)}
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You generate concise folder names."},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=20,
+        temperature=0.2,
     )
-    return [r.embedding for r in response.data]
+
+    name = re.sub(r"[^a-z0-9_]", "", response.choices[0].message.content.strip())
+    group_cache[key] = name or "misc_documents"
+    save_cache(GROUP_CACHE, group_cache)
+    return group_cache[key]
 
 def generate_readme(topic, file_names):
+    key = hash_key(topic + "||".join(sorted(file_names)))
+    if key in readme_cache:
+        return readme_cache[key]
+
     prompt = f"""
     다음 문서들은 '{topic}' 그룹으로 분류된 자료입니다.
     각 문서의 시너지 효과를 설명하는 README.md를 작성해 주세요.
@@ -130,14 +209,18 @@ def generate_readme(topic, file_names):
     문서 목록:
     {chr(10).join(file_names)}
     """
-    response = openai.chat.completions.create(
+
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
     )
-    return response.choices[0].message.content.strip()
+
+    readme_cache[key] = response.choices[0].message.content.strip()
+    save_cache(README_CACHE, readme_cache)
+    return readme_cache[key]
 
 def cluster_documents(files):
-    titles = [f"title: {f.name.split('.')[0]}" for f in files if hasattr(f, "name")]
+    titles = [f"title: {f.name.split('.')[0]}" for f in files]
     vectors = embed_titles(titles)
     clusterer = HDBSCAN(min_cluster_size=2, metric="euclidean")
     return clusterer.fit_predict(vectors)
@@ -147,72 +230,54 @@ def cluster_documents(files):
 # ----------------------------
 if uploaded_files:
     log("파일 업로드 완료 ✅")
-    total = len(uploaded_files)
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    try:
-        labels = cluster_documents(uploaded_files)
-    except Exception as e:
-        st.error(f"⚠️ 문서 클러스터링 실패: {str(e)}")
-        st.stop()
+    labels = cluster_documents(uploaded_files)
 
-    groups = {}
+    raw_groups = {}
     for file, label in zip(uploaded_files, labels):
-        group_name = f"Group_{label if label >= 0 else 'Unclassified'}"
-        groups.setdefault(group_name, []).append(file)
+        raw_groups.setdefault(label, []).append(file)
 
-    for i, (group, files) in enumerate(groups.items(), start=1):
+    for i, (label, files) in enumerate(raw_groups.items(), start=1):
+        names = [f.name.split(".")[0] for f in files]
+        group = "unclassified_documents" if label == -1 else generate_group_name(names)
+
         folder = output_dir / group
         folder.mkdir(exist_ok=True, parents=True)
 
-        for file in files:
-            try:
-                file_path = folder / file.name
-                with open(file_path, "wb") as f:
-                    f.write(file.read())
-            except Exception as e:
-                log(f"❗ 파일 저장 실패: {file.name} - {str(e)}")
-                continue
+        for f in files:
+            with open(folder / f.name, "wb") as out:
+                out.write(f.read())
 
-        try:
-            readme = generate_readme(group, [f.name for f in files])
-            with open(folder / "README.md", "w", encoding="utf-8") as f:
-                f.write(readme)
-        except Exception as e:
-            log(f"❗ README 생성 실패: {group} - {str(e)}")
+        readme = generate_readme(group, [f.name for f in files])
+        (folder / "README.md").write_text(readme, encoding="utf-8")
 
-        progress = int((i / len(groups)) * 100)
+        progress = int((i / len(raw_groups)) * 100)
         status_placeholder.markdown(
-            f"<div class='status-bar'>[{progress}% processing ({i}/{len(groups)} complete)]</div>",
-            unsafe_allow_html=True
+            f"<div class='status-bar'>[{progress}% processing]</div>",
+            unsafe_allow_html=True,
         )
         log(f"문서 그룹 '{group}' 처리 완료 ✅")
 
-    # ZIP 압축 생성
-    zip_filename = "result_documents.zip"
-    try:
-        with zipfile.ZipFile(zip_filename, "w") as zipf:
-            for folder, _, files in os.walk(output_dir):
-                for file in files:
-                    file_path = os.path.join(folder, file)
-                    zipf.write(file_path, arcname=os.path.relpath(file_path, output_dir))
+    with zipfile.ZipFile("result_documents.zip", "w") as zipf:
+        for folder, _, files in os.walk(output_dir):
+            for f in files:
+                p = os.path.join(folder, f)
+                zipf.write(p, arcname=os.path.relpath(p, output_dir))
 
-        with open(zip_filename, "rb") as f:
-            zip_placeholder.download_button(
-                label="📥 정리된 ZIP 파일 다운로드",
-                data=f,
-                file_name=zip_filename,
-                mime="application/zip",
-            )
-
-        log("✅ 모든 파일이 성공적으로 정리되었습니다.")
-        status_placeholder.markdown(
-            f"<div class='status-bar'>[100% complete – 모든 문서 정리 완료]</div>",
-            unsafe_allow_html=True,
+    with open("result_documents.zip", "rb") as f:
+        zip_placeholder.download_button(
+            "📥 정리된 ZIP 파일 다운로드",
+            f,
+            file_name="result_documents.zip",
+            mime="application/zip",
         )
-    except Exception as e:
-        st.error(f"❌ ZIP 생성 실패: {str(e)}")
+
+    status_placeholder.markdown(
+        "<div class='status-bar'>[100% complete – 모든 문서 정리 완료]</div>",
+        unsafe_allow_html=True,
+    )
 
 else:
     status_placeholder.markdown(
