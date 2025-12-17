@@ -1,44 +1,44 @@
 import streamlit as st
-import time
 import zipfile
 import os
 from pathlib import Path
-import openai
 from sklearn.cluster import HDBSCAN
+from openai import OpenAI
 
 # ----------------------------
 # 🌈 기본 페이지 설정
 # ----------------------------
-st.set_page_config(page_title="AI dazy document sorter", page_icon="🗂️", layout="wide")
+st.set_page_config(
+    page_title="AI dazy document sorter",
+    page_icon="🗂️",
+    layout="wide"
+)
 
 # ----------------------------
 # 🔐 OpenAI API 키 설정
 # ----------------------------
-openai.api_key = (
-    st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-)
+OPENAI_API_KEY = (
+    st.secrets.get("OPENAI_API_KEY")
+    if hasattr(st, "secrets")
+    else None
+) or os.getenv("OPENAI_API_KEY")
 
-if not openai.api_key:
+if not OPENAI_API_KEY:
     st.sidebar.error("🚨 OpenAI API Key가 없습니다.")
     st.stop()
-else:
-    st.sidebar.success("✅ OpenAI Key 로드 완료")
+
+st.sidebar.success("✅ OpenAI Key 로드 완료")
+
+# ✅ 최신 SDK 공식 클라이언트 (단일 인스턴스)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ----------------------------
-# 🎨 스타일 커스터마이징
+# 🎨 스타일
 # ----------------------------
 st.markdown(
     """
     <style>
-    body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
-    .stButton>button {
-        border-radius: 10px;
-        background-color: #4a6cf7;
-        color: white;
-        border: none;
-        padding: 0.6em 1.2em;
-        font-weight: 600;
-    }
+    body { background-color: #f8f9fc; }
     .status-bar {
         background-color: #595656;
         border-radius: 6px;
@@ -61,7 +61,7 @@ st.markdown(
 )
 
 # ----------------------------
-# 🧭 사이드바 설정
+# 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 if st.sidebar.button("🔁 다시 시작"):
@@ -69,7 +69,7 @@ if st.sidebar.button("🔁 다시 시작"):
     st.rerun()
 
 # ----------------------------
-# 📁 메인 UI 구성
+# 📁 UI
 # ----------------------------
 left_col, right_col = st.columns([1, 1])
 
@@ -89,13 +89,13 @@ with right_col:
     zip_placeholder = st.empty()
 
 # ----------------------------
-# ⚙️ 로그
+# 로그 UI
 # ----------------------------
 status_placeholder = st.empty()
 log_box = st.empty()
 log_messages = []
 
-def log(msg):
+def log(msg: str):
     log_messages.append(msg)
     log_box.markdown(
         "<div class='log-box'>" + "<br>".join(log_messages[-10:]) + "</div>",
@@ -103,14 +103,14 @@ def log(msg):
     )
 
 # ----------------------------
-# ✨ AI 기능 (🔥 완전 안정 버전)
+# ✨ AI 기능 (최신 SDK)
 # ----------------------------
-def embed_titles(titles):
-    response = openai.Embedding.create(
+def embed_titles(titles: list[str]) -> list[list[float]]:
+    response = client.embeddings.create(
         model="text-embedding-3-large",
-        input=titles
+        input=titles,
     )
-    return [d["embedding"] for d in response["data"]]
+    return [item.embedding for item in response.data]
 
 def cluster_documents(files):
     titles = [f"title: {f.name.split('.')[0]}" for f in files]
@@ -118,19 +118,19 @@ def cluster_documents(files):
     clusterer = HDBSCAN(min_cluster_size=2)
     return clusterer.fit_predict(vectors)
 
-def generate_readme(topic, file_names):
+def generate_readme(topic: str, file_names: list[str]) -> str:
     prompt = f"""
-    다음 문서들은 '{topic}' 그룹으로 분류된 자료입니다.
-    각 문서의 시너지 효과를 설명하는 README.md를 작성해 주세요.
+다음 문서들은 '{topic}' 그룹으로 분류된 자료입니다.
+각 문서의 시너지 효과를 설명하는 README.md를 작성해 주세요.
 
-    문서 목록:
-    {chr(10).join(file_names)}
-    """
-    response = openai.ChatCompletion.create(
+문서 목록:
+{chr(10).join(file_names)}
+"""
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
     )
-    return response["choices"][0]["message"]["content"].strip()
+    return response.choices[0].message.content.strip()
 
 # ----------------------------
 # 🚀 메인 처리
@@ -148,11 +148,11 @@ if uploaded_files:
         st.stop()
 
     groups = {}
-    for f, label in zip(uploaded_files, labels):
-        name = f"Group_{label if label >= 0 else 'Unclassified'}"
-        groups.setdefault(name, []).append(f)
+    for file, label in zip(uploaded_files, labels):
+        group_name = f"Group_{label if label >= 0 else 'Unclassified'}"
+        groups.setdefault(group_name, []).append(file)
 
-    for i, (group, files) in enumerate(groups.items(), 1):
+    for i, (group, files) in enumerate(groups.items(), start=1):
         folder = output_dir / group
         folder.mkdir(exist_ok=True)
 
@@ -169,6 +169,7 @@ if uploaded_files:
             f"<div class='status-bar'>[{progress}% processing]</div>",
             unsafe_allow_html=True,
         )
+        log(f"{group} 처리 완료")
 
     zip_name = "result_documents.zip"
     with zipfile.ZipFile(zip_name, "w") as zipf:
@@ -185,4 +186,10 @@ if uploaded_files:
             "application/zip",
         )
 
-    log("✅ 모든 문서 처리 완료")
+    log("✅ 모든 문서 정리 완료")
+
+else:
+    status_placeholder.markdown(
+        "<div class='status-bar'>[대기 중]</div>",
+        unsafe_allow_html=True,
+    )
