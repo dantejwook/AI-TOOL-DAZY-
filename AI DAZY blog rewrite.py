@@ -240,8 +240,8 @@ def log(msg):
 # ----------------------------
 def safe_json_loads(text: str):
     """
-    모델이 설명/코드펜스/앞뒤 잡문을 섞어 출력해도
-    JSON 객체 또는 배열만 추출해서 파싱한다
+    모델이 여러 JSON / 잡문을 섞어 출력해도
+    '첫 번째 유효한 JSON'만 정확히 파싱한다.
     """
     if not text:
         raise ValueError("Empty response")
@@ -252,18 +252,29 @@ def safe_json_loads(text: str):
     t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\s*```$", "", t)
 
-    # JSON 배열 우선 추출
-    m = re.search(r"\[[\s\S]*\]", t)
-    if m:
-        return json.loads(m.group(0))
+    decoder = json.JSONDecoder()
 
-    # 없으면 JSON 객체 추출
-    m = re.search(r"\{[\s\S]*\}", t)
-    if m:
-        return json.loads(m.group(0))
+    # 배열이 먼저면 배열 시도
+    t_strip = t.lstrip()
+    if t_strip.startswith("["):
+        obj, _ = decoder.raw_decode(t_strip)
+        return obj
 
-    # 최후 수단
-    return json.loads(t)
+    # 객체 시도
+    if t_strip.startswith("{"):
+        obj, _ = decoder.raw_decode(t_strip)
+        return obj
+
+    # 중간에 JSON이 있는 경우를 위해 '{' 또는 '[' 이후부터 재시도
+    for idx, ch in enumerate(t):
+        if ch in "{[":
+            try:
+                obj, _ = decoder.raw_decode(t[idx:])
+                return obj
+            except Exception:
+                continue
+
+    raise ValueError("No valid JSON found")
 
 # ==================================================
 # 🧠 3-STEP BLOG REWRITE LOGIC (복구 완료)
