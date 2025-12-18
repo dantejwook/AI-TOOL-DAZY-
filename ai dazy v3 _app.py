@@ -286,12 +286,12 @@ with left_col:
     col1, col2 = st.columns([1, 1], gap="small")
 
     with col1:
-        if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+        if st.button("Upload File Reset", use_container_width=True):
             st.session_state.uploader_key += 1
             st.rerun()
 
     with col2:
-        if st.button("⬇️ Download Reset", use_container_width=True):
+        if st.button("Download Reset", use_container_width=True):
             reset_output()
             st.rerun()
 
