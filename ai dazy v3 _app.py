@@ -42,41 +42,6 @@ st.set_page_config(
 )
 
 # ============================
-# 🎨 Sidebar Button Styles
-# ============================
-
-st.markdown(
-    """
-    <style>
-    /* 🔑 API Key 변경 버튼 */
-    button[data-testid="stBaseButton"][id*="api_key_btn"] {
-        background-color: #4a6cf7 !important;
-        color: white !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        border: none !important;
-    }
-
-    /* 🔒 로그아웃 버튼 */
-    button[data-testid="stBaseButton"][id*="logout_btn"] {
-        background-color: #d9534f !important;
-        color: white !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        border: none !important;
-    }
-
-    /* hover 효과 */
-    button[data-testid="stBaseButton"]:hover {
-        filter: brightness(0.9);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# ============================
 # 🔒 Password + Token Landing Gate (FIXED)
 # ============================
 
