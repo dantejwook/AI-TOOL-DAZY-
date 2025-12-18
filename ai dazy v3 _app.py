@@ -245,22 +245,22 @@ st.sidebar.markdown(
 )
 
 # ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
-col1, col2 = st.sidebar.columns([1, 1], gap="small")
+#col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
-with col1:
-    if st.button("Cache Reset", use_container_width=True):
-        reset_cache()
-        st.toast("✅ Cache Reset is complete.")
-        st.rerun()
+#with col1:
+#    if st.button("Cache Reset", use_container_width=True):
+#        reset_cache()
+#        st.toast("✅ Cache Reset is complete.")
+#        st.rerun()
 
-with col2:
-    if st.button("Download Reset", use_container_width=True):
-        reset_output()
-        st.toast("✅ Download Reset is complete.")
-        st.rerun()
+#with col2:
+#    if st.button("Download Reset", use_container_width=True):
+#        reset_output()
+#        st.toast("✅ Download Reset is complete.")
+#        st.rerun()
 
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+#def h(t: str):
+#    return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
