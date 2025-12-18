@@ -66,7 +66,7 @@ st.markdown(
     .stButton>button:hover { background-color: #3451c1; }
     .status-bar {
         background-color: #262A32; border-radius: 6px;
-        padding: 0.5em; margin-top: 20px; font-size: 0.9em;
+        padding: 0.5em; margin-top: 10px; font-size: 0.9em;
     }
     .log-box {
         background-color: #262A32; border-radius: 6px;
