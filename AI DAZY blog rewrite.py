@@ -240,7 +240,7 @@ def log(msg):
 # ==================================================
 
 # ① 초안 병합 (JSON)
-def merge_drafts(drafts_text, keyword):
+def merge_drafts(drafts_text):
     prompt = f"""
 당신은 전문 테크 블로그 에디터입니다.
 아래 여러 개의 블로그 초안을 하나의 글로 통합하기 위한
