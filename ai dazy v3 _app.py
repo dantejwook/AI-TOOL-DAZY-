@@ -295,15 +295,15 @@ with left_col:
         st.rerun()
     # ✅ 반드시 여기 안에서
     col2, col3 = st.columns([1, 1], gap="small")
-   
-    with col2:
-        if st.button("Download Reset", use_container_width=True):
-            reset_output()
-            st.rerun()
 
-    with col3:
+    with col2:
         if st.button("Cache Reset", use_container_width=True):
             reset_cache()
+            st.rerun()
+            
+    with col3:
+        if st.button("Download Reset", use_container_width=True):
+            reset_output()
             st.rerun()
 
 
