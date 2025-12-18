@@ -1,4 +1,4 @@
-# AI DAZY v2512190212_1.1 (API Token Session Enabled)
+# AI DAZY v2512190245_1.1
 
 import streamlit as st
 import zipfile
@@ -14,37 +14,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # ============================
-# 🔐 Token Store (File Based)
+# 🔐 Token Store (Server Memory)
 # ============================
+TOKEN_STORE = {}
 TOKEN_EXPIRE_HOURS = 3
-TOKEN_WARNING_MINUTES = 10
-
-CACHE_DIR = Path(".cache")
-CACHE_DIR.mkdir(exist_ok=True)
-
-TOKEN_STORE_PATH = CACHE_DIR / "token_store.json"
-
-
-def load_token_store():
-    if TOKEN_STORE_PATH.exists():
-        try:
-            return json.loads(TOKEN_STORE_PATH.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
-
-
-def save_token_store(store: dict):
-    TOKEN_STORE_PATH.write_text(
-        json.dumps(store, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
-
-
-TOKEN_STORE = load_token_store()
 
 # ----------------------------
-# 🌈 Page Config
+# 🌈 기본 페이지 설정
 # ----------------------------
 st.set_page_config(
     page_title="AI dazy document sorter",
@@ -63,9 +39,11 @@ token = params.get("auth", [None])[0]
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+# 토큰 있으면 인증된 것으로 간주
 if token:
     st.session_state.authenticated = True
 
+# 비인증 상태 → 비밀번호 입력
 if not st.session_state.authenticated:
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     col = st.columns([1, 2, 1])[1]
@@ -75,11 +53,10 @@ if not st.session_state.authenticated:
             """
             <div style="
                 background:#444;
-                padding:2.2rem;
+                padding:2rem;
                 border-radius:16px;
-                box-shadow:0 12px 32px rgba(0,0,0,.4);
                 text-align:center;
-                color:#f5f2f2;">
+                color:white;">
                 <h2>🔒 Access Password</h2>
                 <p>이 앱은 제한된 사용자만 접근할 수 있습니다.</p>
             </div>
@@ -102,26 +79,21 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ============================
-# 🔄 Restore API Session
+# 🔄 Restore API Session from Token
 # ============================
-if token and "api_key" not in st.session_state:
-    record = TOKEN_STORE.get(token)
-
-    if record:
-        expires_at = datetime.fromisoformat(record["expires_at"])
-
-        if datetime.utcnow() < expires_at:
-            st.session_state.api_key = record["api_key"]
-            openai.api_key = record["api_key"]
-        else:
-            TOKEN_STORE.pop(token, None)
-            save_token_store(TOKEN_STORE)
-            st.experimental_set_query_params()
-            st.warning("⏰ API 세션이 만료되었습니다. 다시 인증하세요.")
-            st.stop()
+if token and token in TOKEN_STORE:
+    record = TOKEN_STORE[token]
+    if datetime.utcnow() < record["expires_at"]:
+        openai.api_key = record["api_key"]
+        st.session_state.api_key = record["api_key"]
+    else:
+        TOKEN_STORE.pop(token, None)
+        st.experimental_set_query_params()
+        st.warning("⏰ API 세션이 만료되었습니다. 다시 로그인하세요.")
+        st.stop()
 
 # ============================
-# 🔑 API Key Input
+# 🔑 API Key Input (First Time)
 # ============================
 if "api_key" not in st.session_state:
     st.markdown("### 🔑 OpenAI API Key")
@@ -136,75 +108,27 @@ if "api_key" not in st.session_state:
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            openai.Model.list()
+            openai.Model.list()  # 유효성 검사
 
             TOKEN_STORE[token] = {
                 "api_key": api_key_input,
-                "expires_at": (
-                    datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS)
-                ).isoformat(),
+                "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
             }
-            save_token_store(TOKEN_STORE)
 
             st.session_state.api_key = api_key_input
             st.success("API Key 인증 완료")
             st.rerun()
-
         except Exception:
             st.error("❌ 유효하지 않은 API Key입니다.")
 
     st.stop()
 
+# ============================
+# ✅ API Session Active
+# ============================
 openai.api_key = st.session_state.api_key
 
-# ============================
-# ⚠️ Expiry Warning + Extend
-# ============================
-record = TOKEN_STORE.get(token)
-if record:
-    expires_at = datetime.fromisoformat(record["expires_at"])
-    remaining = (expires_at - datetime.utcnow()).total_seconds()
-
-    if 0 < remaining <= TOKEN_WARNING_MINUTES * 60:
-        minutes_left = int(remaining // 60)
-
-        col_w, col_b = st.columns([4, 1])
-
-        with col_w:
-            st.warning(f"⏰ API 세션 만료까지 약 {minutes_left}분 남았습니다.")
-
-        with col_b:
-            if st.button("⏳ 연장하기", use_container_width=True):
-                TOKEN_STORE[token]["expires_at"] = (
-                    datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS)
-                ).isoformat()
-                save_token_store(TOKEN_STORE)
-                st.success("✅ 세션이 3시간 연장되었습니다.")
-                st.rerun()
-
-# ============================
-# 🚪 Logout
-# ============================
-st.sidebar.title("⚙️ 세션 관리")
-
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    if st.button("🔑 API Key 변경", use_container_width=True):
-        st.session_state.pop("api_key", None)
-        st.rerun()
-
-with col2:
-    if st.button("🔒 로그아웃", use_container_width=True):
-        TOKEN_STORE.pop(token, None)
-        save_token_store(TOKEN_STORE)
-        st.session_state.clear()
-        st.experimental_set_query_params()
-        st.rerun()
-
-# ============================
-# ✅ SESSION READY
-# ============================
-st.success("✅ 로그인중)")
+st.success("✅ 로그인")
 
 # ----------------------------
 # 🎨 스타일
