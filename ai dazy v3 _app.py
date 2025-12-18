@@ -1,4 +1,4 @@
-# AI DAZY v2512190212_1.0 FINAL
+# AI DAZY v2512190212_1.0
 
 import streamlit as st
 import zipfile
@@ -10,33 +10,27 @@ import json
 import hashlib
 import re
 import shutil
-import secrets
+
+# ⭐ 추가: 병렬 처리용
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
 
 # ============================
-# 🔐 Token Store (API Key + Expiry)
+# 🔧 change log
 # ============================
-TOKEN_KEY_STORE = {}
-TOKEN_EXPIRE_HOURS = 3
-TOKEN_WARNING_MINUTES = 10
-
-# ============================
-# 🔧change log
-# ============================
-# 1.캐시 초기화 적용 버젼
-# 2.다시시작 버튼 제거
-# 3.대용량 처리 가능
-# 4.문서 (.md, .pdf, .txt) 지원가능
-# 5.비밀번호 + API 세션 인증
-# 6.API 세션 만료/연장 UX 적용
+# 1. 캐시 초기화 적용 버전
+# 2. 다시 시작 버튼 제거
+# 3. 대용량 처리 가능
+# 4. 문서 (.md, .pdf, .txt) 지원 가능
+# 5. API 인증, 비밀번호 입력 기능 도입
 
 # ============================
 # 🔧 재분해 설정
 # ============================
 MAX_FILES_PER_CLUSTER = 25
 MAX_RECURSION_DEPTH = 2
-AUTO_SPLIT_NOTICE = "⚠️ 이 폴더는 파일 수 제한(25개)으로 인해 자동 분해되었습니다.\n\n"
+AUTO_SPLIT_NOTICE = (
+    "⚠️ 이 폴더는 파일 수 제한(25개)으로 인해 자동 분해되었습니다.\n\n"
+)
 
 # ----------------------------
 # 🌈 기본 페이지 설정
@@ -48,21 +42,25 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password + Token Gate
+# 🔒 Password + Token Landing Gate (FIXED)
 # ============================
+import secrets
+
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
 params = st.experimental_get_query_params()
-token = params.get("auth", [None])[0]
+if "auth" in params:
+    st.session_state.authenticated = True
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-if token:
-    st.session_state.authenticated = True
-
 if not st.session_state.authenticated:
+
+    # 🔹 세로 중앙 여백
     st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+
+    # 🔹 중앙 컨테이너
     center_col = st.columns([1, 2, 1])[1]
 
     with center_col:
@@ -77,7 +75,9 @@ if not st.session_state.authenticated:
                 text-align: center;
                 color: #f5f2f2;
             }
-            input[type="password"] { text-align: center; }
+            input[type="password"] {
+                text-align: center;
+            }
             </style>
             """,
             unsafe_allow_html=True,
@@ -93,13 +93,18 @@ if not st.session_state.authenticated:
             unsafe_allow_html=True,
         )
 
-        pw = st.text_input("Password", type="password", label_visibility="collapsed")
+        password_input = st.text_input(
+            "Password",
+            type="password",
+            placeholder="비밀번호 입력",
+            label_visibility="collapsed",
+        )
 
-        if pw:
-            if pw == APP_PASSWORD:
-                new_token = secrets.token_hex(16)
+        if password_input:
+            if password_input == APP_PASSWORD:
+                token = secrets.token_hex(16)
                 st.session_state.authenticated = True
-                st.experimental_set_query_params(auth=new_token)
+                st.experimental_set_query_params(auth=token)
                 st.success("접근 허용")
                 st.rerun()
             else:
@@ -108,86 +113,30 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ============================
-# 🔄 Restore API Key from Token
-# ============================
-if token and "api_key" not in st.session_state:
-    record = TOKEN_KEY_STORE.get(token)
-    if record:
-        if datetime.utcnow() < record["expires_at"]:
-            st.session_state.api_key = record["api_key"]
-        else:
-            TOKEN_KEY_STORE.pop(token, None)
-            st.experimental_set_query_params()
-            st.warning("⏰ API 세션이 만료되었습니다. 다시 인증하세요.")
-            st.stop()
-
-# ============================
-# 🔑 API Key Input
+# 🔑 API Key Input (Session Memory)
 # ============================
 if "api_key" not in st.session_state:
+
     st.markdown("### 🔑 OpenAI API Key")
+
     api_key_input = st.text_input(
-        "OpenAI API Key", type="password", label_visibility="collapsed"
+        "OpenAI API Key",
+        type="password",
+        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+        label_visibility="collapsed",
     )
 
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            openai.Model.list()
+            openai.Model.list()  # ✅ 키 유효성 검사
             st.session_state.api_key = api_key_input
-
-            TOKEN_KEY_STORE[token] = {
-                "api_key": api_key_input,
-                "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
-            }
-
             st.success("API Key 인증 완료")
             st.rerun()
         except Exception:
             st.error("❌ 유효하지 않은 API Key입니다.")
 
     st.stop()
-
-openai.api_key = st.session_state.api_key
-
-# ============================
-# ⚠️ Expiry Warning + Extend
-# ============================
-if token and token in TOKEN_KEY_STORE:
-    record = TOKEN_KEY_STORE[token]
-    remaining = (record["expires_at"] - datetime.utcnow()).total_seconds()
-
-    if 0 < remaining <= TOKEN_WARNING_MINUTES * 60:
-        minutes_left = int(remaining // 60)
-        col_w, col_b = st.columns([4, 1])
-        with col_w:
-            st.warning(f"⏰ API 세션 만료까지 약 {minutes_left}분 남았습니다.")
-        with col_b:
-            if st.button("⏳ 연장하기", use_container_width=True):
-                TOKEN_KEY_STORE[token]["expires_at"] = (
-                    datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS)
-                )
-                st.success("✅ 세션이 3시간 연장되었습니다.")
-                st.rerun()
-
-# ============================
-# 🚪 Sidebar Logout
-# ============================
-st.sidebar.title("⚙️ 세션 관리")
-
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    if st.button("🔑 API Key 변경", use_container_width=True):
-        st.session_state.pop("api_key", None)
-        st.rerun()
-
-with col2:
-    if st.button("🔒 로그아웃", use_container_width=True):
-        if token:
-            TOKEN_KEY_STORE.pop(token, None)
-        st.session_state.clear()
-        st.experimental_set_query_params()
-        st.rerun()
 
 # ----------------------------
 # 🎨 스타일
