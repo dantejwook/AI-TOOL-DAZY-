@@ -186,7 +186,7 @@ st.markdown(
 # ============================
 # 🔒 Logout Button
 # ============================
-
+st.sidebar.title("⚙️ Setting")
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
