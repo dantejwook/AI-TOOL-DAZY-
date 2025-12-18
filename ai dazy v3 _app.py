@@ -112,10 +112,7 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
-if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
-    st.session_state.uploader_key += 1
-    st.toast("업로드된 파일이 모두 제거되었습니다.")
-    st.rerun()
+
 
 
 # ============================
@@ -151,6 +148,11 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+    st.session_state.uploader_key += 1
+    st.toast("업로드된 파일이 모두 제거되었습니다.")
+    st.rerun()
 
 # ----------------------------
 # 🧭 사이드바
