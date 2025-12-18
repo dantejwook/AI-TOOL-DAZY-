@@ -185,25 +185,25 @@ with left_col:
 
 with right_col:
     st.subheader("ZIP Download")
-    st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화됩니다.")
+    st.caption("문서 정리 후 다운로드 버튼이 활성화됩니다")
 
-    zip_ready = Path("result_documents.zip").exists()
+    zip_exists = Path("result_documents.zip").exists()
 
-    if zip_ready:
+    if zip_exists:
         st.download_button(
             "[ Download ]",
             open("result_documents.zip", "rb"),
             file_name="result_documents.zip",
             mime="application/zip",
             use_container_width=True,
-            key="zip_ready",
+            key="zip_download_button",
         )
     else:
         st.button(
             "[ Download ]",
             disabled=True,
             use_container_width=True,
-            key="zip_disabled",
+            key="zip_download_disabled",
         )
     
 # ----------------------------
@@ -492,15 +492,6 @@ if uploaded_files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
  
-    st.download_button(
-        "[ Download ]",
-        open("result_documents.zip", "rb"),
-        file_name="result_documents.zip",
-        mime="application/zip",
-        use_container_width=True,
-        key="zip_download_button",
-     )
-
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
