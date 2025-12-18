@@ -90,6 +90,21 @@ st.sidebar.markdown(
 """
 )
 
+# ▶ 사이드바 버튼 (분리)
+if st.sidebar.button("🧹 캐시 초기화"):
+    reset_cache()
+    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
+    st.rerun()
+
+if st.sidebar.button("🗑️ 결과 폴더 초기화"):
+    reset_output()
+    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
+    st.rerun()
+
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+
 st.sidebar.title("⚙️ 설정")
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
@@ -148,20 +163,6 @@ def reset_output():
         shutil.rmtree(output_dir)
     if zip_path.exists():
         zip_path.unlink()
-
-# ▶ 사이드바 버튼 (분리)
-if st.sidebar.button("🧹 캐시 초기화"):
-    reset_cache()
-    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
-    st.rerun()
-
-if st.sidebar.button("🗑️ 결과 폴더 초기화"):
-    reset_output()
-    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
-    st.rerun()
-
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 # ----------------------------
 # 📁 메인 UI
