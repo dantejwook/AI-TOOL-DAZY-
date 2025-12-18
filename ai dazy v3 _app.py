@@ -56,6 +56,7 @@ else:
 # ----------------------------
 st.markdown(
     """
+    
     <style>
     body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
     .stButton>button {
@@ -71,6 +72,16 @@ st.markdown(
         background-color: #595656; border-radius: 6px;
         padding: 0.8em; margin-top: 10px;
         height: 120px; overflow-y: auto; font-size: 0.85em;
+        border: 1px solid #dee2e6;
+    }
+    .download-box {
+        background-color: #595656;
+        border-radius: 6px;
+        padding: 0.8em;
+        margin-top: 10px;
+        height: 120px;
+        overflow-y: auto;
+        font-size: 0.85em;
         border: 1px solid #dee2e6;
     }
     </style>
