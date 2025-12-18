@@ -16,6 +16,8 @@ from pathlib import Path
 # ============================
 # 🔐 Token Store (Server Memory)
 # ============================
+TOKEN_STORE_PATH = Path(".cache/token_store.json")
+TOKEN_STORE_PATH.parent.mkdir(exist_ok=True)
 TOKEN_STORE = {}
 TOKEN_EXPIRE_HOURS = 3
 
