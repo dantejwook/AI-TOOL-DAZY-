@@ -185,7 +185,7 @@ with left_col:
 
 with right_col:
     st.subheader("ZIP Download")
-    st.caption("문서 정리 후 다운로드 버튼이 활성화됩니다")
+        "📁 문서 정리 후 다운로드 버튼이 활성화됩니다",
 
     zip_exists = Path("result_documents.zip").exists()
 
