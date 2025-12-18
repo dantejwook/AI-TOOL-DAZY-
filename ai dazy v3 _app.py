@@ -183,6 +183,20 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 
+# ============================
+# 🔒 Logout Button
+# ============================
+
+if st.sidebar.button("🔒 로그아웃", use_container_width=True):
+    # 인증 상태 제거
+    st.session_state.pop("authenticated", None)
+    st.session_state.pop("api_key", None)
+
+    # URL 토큰 제거
+    st.experimental_set_query_params()
+
+    # 전체 리셋
+    st.rerun()
 if st.sidebar.button("🔑 API Key 변경"):
     st.session_state.pop("api_key", None)
     st.rerun()
