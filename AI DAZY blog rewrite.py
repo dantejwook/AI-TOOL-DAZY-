@@ -196,8 +196,7 @@ with left_col:
     )
 
     # 🔹 기존 UI 흐름 유지 + 최소 입력
-    keyword = st.text_input("SEO 키워드", placeholder="예: AI 문서 자동화")
-
+  
     if st.button("Upload File Reset", use_container_width=True):
         st.session_state.uploader_key += 1
         st.rerun()
@@ -261,7 +260,6 @@ def merge_drafts(drafts_text, keyword):
   "merged_notes": "..."
 }}
 
-키워드: {keyword}
 
 초안:
 {drafts_text}
@@ -341,6 +339,7 @@ if uploaded_files and keyword:
 
     # ① 병합
     merged = merge_drafts(drafts_text, keyword)
+    keyword = merged["core_topic"]  # ← 자동 키워드
     progress.progress(30)
     log("초안 병합 완료")
 
