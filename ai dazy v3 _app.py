@@ -7,9 +7,10 @@ from hdbscan import HDBSCAN
 import json
 import hashlib
 import re
+import shutil
 
 # ============================
-# 🔧 ver.2512181454 dazy v3.12 
+# 🔧 ver.2512181511 dazyv3.1.2
 # ============================
 
 # ============================
@@ -69,6 +70,10 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
+
+if st.sidebar.button("🔁 다시 시작"):
+    st.rerun()
+
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
@@ -161,34 +166,6 @@ def log(msg):
     )
 
 # ----------------------------
-# 🧠 캐시
-# ----------------------------
-CACHE_DIR = Path(".cache")
-CACHE_DIR.mkdir(exist_ok=True)
-
-def load_cache(p):
-    try:
-        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    except Exception:
-        return {}
-
-def save_cache(p, d):
-    p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-
-EMBED_CACHE = CACHE_DIR / "embeddings.json"
-GROUP_CACHE = CACHE_DIR / "group_names.json"
-README_CACHE = CACHE_DIR / "readmes.json"
-EXPAND_CACHE = CACHE_DIR / "expands.json"
-
-embedding_cache = load_cache(EMBED_CACHE)
-group_cache = load_cache(GROUP_CACHE)
-readme_cache = load_cache(README_CACHE)
-expand_cache = load_cache(EXPAND_CACHE)
-
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
-
-# ----------------------------
 # ✨ 유틸
 # ----------------------------
 def sanitize_folder_name(name: str) -> str:
@@ -212,15 +189,9 @@ def title_from_filename(file_name: str) -> str:
     return base
 
 # ----------------------------
-# 🧠 0차 GPT EXPAND (핵심)
+# 🧠 0차 GPT EXPAND
 # ----------------------------
 def expand_document_with_gpt(file):
-    """
-    문서 1개를 의미적으로 확장 (0차 작업)
-    - GPT-5 nano 사용
-    - 캐시 사용
-    - 실패 시 파일명 기반 fallback
-    """
     key = h(file.name)
     if key in expand_cache:
         return expand_cache[key]
@@ -254,12 +225,9 @@ def expand_document_with_gpt(file):
             ],
             temperature=0.2,
         )
-
-        content = r["choices"][0]["message"]["content"].strip()
-        data = json.loads(content)
-
+        data = json.loads(r["choices"][0]["message"]["content"])
         if "embedding_text" not in data:
-            raise ValueError("embedding_text 누락")
+            raise ValueError
 
     except Exception:
         data = {
@@ -274,43 +242,10 @@ def expand_document_with_gpt(file):
     return data
 
 # ----------------------------
-# 🔥 병렬 EXPAND 추가 (패치)
-# ----------------------------
-def expand_documents_parallel(files, max_workers=5, sleep_sec=0.1):
-    results = [None] * len(files)
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_map = {
-            executor.submit(expand_document_with_gpt, f): idx
-            for idx, f in enumerate(files)
-        }
-
-        for future in as_completed(future_map):
-            idx = future_map[future]
-            try:
-                results[idx] = future.result()
-            except Exception:
-                f = files[idx]
-                title = title_from_filename(f.name)
-                results[idx] = {
-                    "canonical_title": title,
-                    "keywords": title.split(),
-                    "domain": "기타",
-                    "embedding_text": f"제목: {title}",
-                }
-            time.sleep(sleep_sec)
-
-    return results
-
-
-# ----------------------------
 # ✨ 임베딩
 # ----------------------------
 def embed_texts(texts):
-    missing = []
-    for t in texts:
-        if h(t) not in embedding_cache:
-            missing.append(t)
+    missing = [t for t in texts if h(t) not in embedding_cache]
 
     if missing:
         r = openai.Embedding.create(
@@ -328,8 +263,7 @@ def embed_texts(texts):
 # ----------------------------
 def cluster_documents(files):
     expanded = [expand_document_with_gpt(f) for f in files]
-    embed_inputs = [e["embedding_text"] for e in expanded]
-    vectors = embed_texts(embed_inputs)
+    vectors = embed_texts([e["embedding_text"] for e in expanded])
     return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
 
 # ----------------------------
@@ -373,7 +307,7 @@ def generate_group_name(names):
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-5-nano",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
             {"role": "user", "content": prompt + "\n" + "\n".join(names)},
@@ -410,11 +344,10 @@ def generate_readme(topic, files, auto_split=False):
         ],
     )
 
-    content = r["choices"][0]["message"]["content"].strip()
-    final = notice + content
-    readme_cache[k] = final
+    content = notice + r["choices"][0]["message"]["content"].strip()
+    readme_cache[k] = content
     save_cache(README_CACHE, readme_cache)
-    return final
+    return content
 
 # ----------------------------
 # 🚀 메인 처리
@@ -422,15 +355,17 @@ def generate_readme(topic, files, auto_split=False):
 if uploaded_files:
     uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
     if not uploaded_files:
-        st.error("❗ 유효한 파일이 없습니다.")
         st.stop()
+
+    # ▶ 실행 시 결과 폴더 자동 초기화
+    reset_output()
+
+    output_dir = Path("output_docs")
+    output_dir.mkdir(exist_ok=True)
 
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
     log("파일 업로드 완료")
-
-    output_dir = Path("output_docs")
-    output_dir.mkdir(exist_ok=True)
 
     top_clusters = recursive_cluster(uploaded_files)
     total = len(top_clusters)
@@ -441,17 +376,13 @@ if uploaded_files:
         main_folder = output_dir / main_group
         main_folder.mkdir(parents=True, exist_ok=True)
 
-        main_readme = generate_readme(
-            main_group,
-            [f.name for f in cluster_files],
-            auto_split=len(cluster_files) > MAX_FILES_PER_CLUSTER,
+        (main_folder / "★README.md").write_text(
+            generate_readme(main_group, [f.name for f in cluster_files]),
+            encoding="utf-8",
         )
-        (main_folder / "★README.md").write_text(main_readme, encoding="utf-8")
 
         used_names = set()
-        sub_clusters = recursive_cluster(cluster_files)
-
-        for sub_files in sub_clusters:
+        for sub_files in recursive_cluster(cluster_files):
             base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
             sub_group = unique_folder_name(base, used_names)
             used_names.add(sub_group)
@@ -462,23 +393,19 @@ if uploaded_files:
             for f in sub_files:
                 (sub_folder / f.name).write_bytes(f.getvalue())
 
-            sub_readme = generate_readme(
-                f"{main_group} - {sub_group}",
-                [f.name for f in sub_files],
-                auto_split=len(sub_files) >= MAX_FILES_PER_CLUSTER,
+            (sub_folder / "★README.md").write_text(
+                generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
+                encoding="utf-8",
             )
-            (sub_folder / "★README.md").write_text(sub_readme, encoding="utf-8")
 
         done += 1
         pct = int(done / total * 100)
         progress.progress(pct)
-        progress_text.markdown(
-            f"<div class='status-bar'>[{pct}% ({done}/{total})]</div>",
-            unsafe_allow_html=True,
-        )
+        progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
         log(f"{main_group} 처리 완료")
 
-    with zipfile.ZipFile("result_documents.zip", "w") as z:
+    zip_path = Path("result_documents.zip")
+    with zipfile.ZipFile(zip_path, "w") as z:
         for root, _, files in os.walk(output_dir):
             for f in files:
                 p = os.path.join(root, f)
@@ -486,16 +413,13 @@ if uploaded_files:
 
     zip_placeholder.download_button(
         "📥 정리된 ZIP 파일 다운로드",
-        open("result_documents.zip", "rb"),
-        file_name="result_documents.zip",
+        open(zip_path, "rb"),
+        file_name=zip_path.name,
         mime="application/zip",
     )
 
     progress.progress(100)
-    progress_text.markdown(
-        "<div class='status-bar'>[100% complete]</div>",
-        unsafe_allow_html=True,
-    )
+    progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
 
 else:
