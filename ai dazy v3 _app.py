@@ -135,6 +135,7 @@ st.sidebar.markdown(
 )
 
 # ▶ 사이드바 버튼 (분리)
+
 col1, col2 = st.sidebar.columns(2)
 
 with col1:
