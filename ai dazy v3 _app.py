@@ -72,8 +72,7 @@ st.markdown(
 st.sidebar.title("⚙️ 설정")
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
-st.sidebar.title("🔁 다시 시작
-(f5 버튼 누르면 됩니다.")
+st.sidebar.title("🔁 다시 시작(f5)")
 
 
 # ----------------------------
