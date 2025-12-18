@@ -185,19 +185,24 @@ with left_col:
 
 with right_col:
     st.subheader("📦 ZIP 다운로드")
-    st.caption("⏳ 문서 정리 후 ZIP 파일이 준비됩니다")
 
-    with st.container():
-        st.markdown(
-            '<div class="download-box">',
-            unsafe_allow_html=True,
+    # 업로드 쪽과 동일한 위치의 설명
+    st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
+
+    # 처리 전에는 버튼 비활성 느낌만 주기
+    if not Path("result_documents.zip").exists():
+        st.button(
+            "📥 정리된 ZIP 파일 다운로드",
+            disabled=True,
+            use_container_width=True,
         )
-
-        zip_placeholder = st.empty()  # 나중에 버튼으로 교체
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True,
+    else:
+        st.download_button(
+            "📥 정리된 ZIP 파일 다운로드",
+            open("result_documents.zip", "rb"),
+            file_name="result_documents.zip",
+            mime="application/zip",
+            use_container_width=True,
         )
     
 # ----------------------------
