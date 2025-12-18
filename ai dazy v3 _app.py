@@ -173,6 +173,7 @@ st.sidebar.markdown(
 left_col, right_col = st.columns([1, 1])
 
 st.subheader("AI auto file analyzer")
+st.caption("문서를 분석하고 자동으로 구조화합니다")
 
 with left_col:
     st.subheader("File upload")
