@@ -339,7 +339,6 @@ if uploaded_files and keyword:
 
     # ① 병합
     merged = merge_drafts(drafts_text, keyword)
-    keyword = merged["core_topic"]  # ← 자동 키워드
     progress.progress(30)
     log("초안 병합 완료")
 
