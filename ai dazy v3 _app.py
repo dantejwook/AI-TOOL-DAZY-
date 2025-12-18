@@ -284,17 +284,19 @@ with left_col:
     )
 
 col1, col2 = st.columns([1, 1], gap="small")
-with col1:
-    if st.button("업로드 파일 전체 비우기", use_container_width=True):
-        st.session_state.uploader_key += 1
-        st.toast("업로드된 파일이 모두 제거되었습니다.")
-        st.rerun()
-        
-with col2:
-    if st.button("Download Reset", use_container_width=True):
-        reset_output()
-        st.toast("다운로드 결과가 초기화되었습니다.")
-        st.rerun()
+    )
+
+    col1, col2 = st.columns([1, 1], gap="small")
+
+    with col1:
+        if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+            st.session_state.uploader_key += 1
+            st.rerun()
+
+    with col2:
+        if st.button("⬇️ Download Reset", use_container_width=True):
+            reset_output()
+            st.rerun()
 
 
 
