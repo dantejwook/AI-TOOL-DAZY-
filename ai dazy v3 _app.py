@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 1.캐시 초기화 적용 버젼
 # 2.다시시작 버튼 제거
 # 3.대용량 처리 가능
-# 4.문서 (.md, .pdf, .txt, .zip, .word, .ppt, .xls) 지원가능
+# 4.문서 (.md, .pdf, .txt) 지원가능
 
 # ============================
 
@@ -169,9 +169,9 @@ left_col, right_col = st.columns([1, 1])
 with left_col:
     st.subheader("📤 파일 업로드")
     uploaded_files = st.file_uploader(
-        "문서를 업로드하세요 (.md, .pdf, .txt, .zip, .word, .ppt, .xls)",
+        "문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
-        type=["md", "pdf", "txt", "zip", "word", "ppt", "xls", "pptx", "xls", "xlsx"],
+        type=["md", "pdf", "txt", "zip"],
     )
 
 with right_col:
