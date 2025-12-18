@@ -1,4 +1,4 @@
-#최종 수정본#
+#last, rollbacK 용
 
 import streamlit as st
 import zipfile
@@ -10,7 +10,6 @@ import json
 import hashlib
 import re
 import shutil
-import time  # ⭐ 추가: 소요 시간 측정
 
 # ⭐ 추가: 병렬 처리용
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -111,9 +110,6 @@ group_cache = load_cache(GROUP_CACHE)
 readme_cache = load_cache(README_CACHE)
 expand_cache = load_cache(EXPAND_CACHE)
 
-# ⭐ 추가: 0차 EXPAND 결과 전역 보관
-EXPANDED_MAP = {}
-
 def reset_cache():
     if CACHE_DIR.exists():
         shutil.rmtree(CACHE_DIR)
@@ -122,7 +118,6 @@ def reset_cache():
     group_cache.clear()
     readme_cache.clear()
     expand_cache.clear()
-    EXPANDED_MAP.clear()
 
 def reset_output():
     output_dir = Path("output_docs")
@@ -242,6 +237,7 @@ def expand_document_with_gpt(file):
         data = json.loads(r["choices"][0]["message"]["content"])
         if "embedding_text" not in data:
             raise ValueError
+
     except Exception:
         data = {
             "canonical_title": fallback_title,
@@ -255,7 +251,7 @@ def expand_document_with_gpt(file):
     return data
 
 # ----------------------------
-# ⭐ 병렬 EXPAND
+# ⭐ 추가: 0차 EXPAND 병렬 처리
 # ----------------------------
 def expand_documents_parallel(files, max_workers=5):
     results = {}
@@ -263,22 +259,24 @@ def expand_documents_parallel(files, max_workers=5):
         futures = {executor.submit(expand_document_with_gpt, f): f for f in files}
         for future in as_completed(futures):
             f = futures[future]
-            results[f] = future.result()
+            try:
+                results[f] = future.result()
+            except Exception:
+                fallback_title = title_from_filename(f.name)
+                results[f] = {
+                    "canonical_title": fallback_title,
+                    "keywords": fallback_title.split(),
+                    "domain": "기타",
+                    "embedding_text": f"제목: {fallback_title}",
+                }
     return [results[f] for f in files]
-
-# ----------------------------
-# ⭐ 추가: 0차 EXPAND 1회 사전 계산
-# ----------------------------
-def precompute_expand(files):
-    expanded = expand_documents_parallel(files, max_workers=5)
-    for f, e in zip(files, expanded):
-        EXPANDED_MAP[f] = e
 
 # ----------------------------
 # ✨ 임베딩
 # ----------------------------
 def embed_texts(texts):
     missing = [t for t in texts if h(t) not in embedding_cache]
+
     if missing:
         r = openai.Embedding.create(
             model="text-embedding-3-large",
@@ -287,13 +285,15 @@ def embed_texts(texts):
         for t, d in zip(missing, r["data"]):
             embedding_cache[h(t)] = d["embedding"]
         save_cache(EMBED_CACHE, embedding_cache)
+
     return [embedding_cache[h(t)] for t in texts]
 
 # ----------------------------
 # 📦 클러스터링
 # ----------------------------
 def cluster_documents(files):
-    expanded = [EXPANDED_MAP[f] for f in files]
+    # ⭐ 변경: 0차 EXPAND 병렬 적용
+    expanded = expand_documents_parallel(files, max_workers=5)
     vectors = embed_texts([e["embedding_text"] for e in expanded])
     return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
 
@@ -315,6 +315,7 @@ def recursive_cluster(files, depth=0):
             result.extend(recursive_cluster(g, depth + 1))
         else:
             result.append(g)
+
     return result
 
 # ----------------------------
@@ -325,33 +326,56 @@ def generate_group_name(names):
     if k in group_cache:
         return group_cache[k]
 
+    prompt = """
+다음 문서 제목들의 공통 주제를 대표하는
+짧고 명확한 한글 폴더명 하나만 출력하세요.
+
+규칙:
+- 2~4 단어
+- 조사 사용 금지
+- 숫자/번호 금지
+- 설명 금지
+"""
+
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
-            {"role": "user", "content": "\n".join(names)},
+            {"role": "user", "content": prompt + "\n" + "\n".join(names)},
         ],
+        temperature=0.3,
     )
+
     name = sanitize_folder_name(r["choices"][0]["message"]["content"])
     group_cache[k] = name
     save_cache(GROUP_CACHE, group_cache)
     return name
 
 def generate_readme(topic, files, auto_split=False):
-    k = h(topic + "||" + "||".join(sorted(files)))
+    k = h(("split" if auto_split else "nosplit") + topic + "||" + "||".join(sorted(files)))
     if k in readme_cache:
         return readme_cache[k]
 
+    notice = AUTO_SPLIT_NOTICE if auto_split else ""
+
     prompt = f"""
-다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
+{notice}다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
 각 문서의 관계와 활용 목적을 설명하는 README.md를 작성하세요.
+반드시 한국어로 작성하세요.
+
+문서 목록:
+{chr(10).join(files)}
 """
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": "너는 한국어로만 README를 작성한다."},
+            {"role": "user", "content": prompt},
+        ],
     )
-    content = r["choices"][0]["message"]["content"].strip()
+
+    content = notice + r["choices"][0]["message"]["content"].strip()
     readme_cache[k] = content
     save_cache(README_CACHE, readme_cache)
     return content
@@ -360,33 +384,50 @@ def generate_readme(topic, files, auto_split=False):
 # 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
-    start_time = time.time()  # ⭐ 시작 시간
-
     uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
+    if not uploaded_files:
+        st.stop()
+
+    # ▶ 실행 시 결과 폴더 자동 초기화
     reset_output()
 
+    output_dir = Path("output_docs")
+    output_dir.mkdir(exist_ok=True)
+
     progress = progress_placeholder.progress(0)
+    progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
     log("파일 업로드 완료")
-    log("0차 EXPAND 사전 계산 시작")
-
-    precompute_expand(uploaded_files)
-
-    log("0차 EXPAND 사전 계산 완료")
 
     top_clusters = recursive_cluster(uploaded_files)
     total = len(top_clusters)
     done = 0
-
-    output_dir = Path("output_docs")
-    output_dir.mkdir(exist_ok=True)
 
     for cluster_files in top_clusters:
         main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
         main_folder = output_dir / main_group
         main_folder.mkdir(parents=True, exist_ok=True)
 
-        for f in cluster_files:
-            (main_folder / f.name).write_bytes(f.getvalue())
+        (main_folder / "★README.md").write_text(
+            generate_readme(main_group, [f.name for f in cluster_files]),
+            encoding="utf-8",
+        )
+
+        used_names = set()
+        for sub_files in recursive_cluster(cluster_files):
+            base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
+            sub_group = unique_folder_name(base, used_names)
+            used_names.add(sub_group)
+
+            sub_folder = main_folder / sub_group
+            sub_folder.mkdir(parents=True, exist_ok=True)
+
+            for f in sub_files:
+                (sub_folder / f.name).write_bytes(f.getvalue())
+
+            (sub_folder / "★README.md").write_text(
+                generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
+                encoding="utf-8",
+            )
 
         done += 1
         pct = int(done / total * 100)
@@ -404,16 +445,6 @@ if uploaded_files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
 
-    end_time = time.time()
-    elapsed = int(end_time - start_time)
-    m, s = divmod(elapsed, 60)
-
-    progress_text.markdown(
-        f"<div class='status-bar'>완료 · 소요 시간 {m}분 {s}초</div>",
-        unsafe_allow_html=True
-    )
-    log(f"총 소요 시간: {m}분 {s}초")
-
     zip_placeholder.download_button(
         "📥 정리된 ZIP 파일 다운로드",
         open(zip_path, "rb"),
@@ -421,6 +452,11 @@ if uploaded_files:
         mime="application/zip",
     )
 
-else:
-    progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
+    progress.progress(100)
+    progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
+    log("모든 문서 정리 완료")
 
+else:
+    progress_placeholder.progress(0)
+    progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
+    log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
