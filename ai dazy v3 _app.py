@@ -134,21 +134,21 @@ st.sidebar.markdown(
 """
 )
 
-# ▶ 사이드바 버튼 (분리)
+# ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
 
-col1, col2 = st.sidebar.columns(2)
+col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
-   if st.button("🧹 Cache Reset"):
-       reset_cache()
-       st.sidebar.success("✅ Cache Reset is complete.")
-       st.rerun()
+    if st.button("🧹 Cache Reset", use_container_width=True):
+        reset_cache()
+        st.toast("✅ Cache Reset is complete.")
+        st.rerun()
 
 with col2:
-   if st.button("🗑️ Download Reset"):
-       reset_output()
-       st.sidebar.success("✅ Download Reset is complete.")
-       st.rerun()
+    if st.button("🗑️ Download Reset", use_container_width=True):
+        reset_output()
+        st.toast("✅ Download Reset is complete.")
+        st.rerun()
 
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
