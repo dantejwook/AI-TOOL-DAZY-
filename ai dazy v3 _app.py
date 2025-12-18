@@ -1,4 +1,4 @@
-# last, rollbac api key fix (FINAL)
+#last, rollbac api key fix
 
 import streamlit as st
 import zipfile
@@ -10,17 +10,20 @@ import json
 import hashlib
 import re
 import shutil
-import secrets
+
+# ⭐ 추가: 병렬 처리용
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================
 # 🔧change log
 # ============================
+
 # 1.캐시 초기화 적용 버젼
 # 2.다시시작 버튼 제거
 # 3.대용량 처리 가능
 # 4.문서 (.md, .pdf, .txt) 지원가능
-# 5.🔄 원클릭 전체 초기화 적용
+
+# ============================
 
 # ============================
 # 🔧 재분해 설정
@@ -39,8 +42,11 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password + Token Landing Gate
+# 🔒 Password + Token Landing Gate (FIXED)
 # ============================
+
+import secrets
+
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
 params = st.experimental_get_query_params()
@@ -51,10 +57,15 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
+
+    # 🔹 세로 중앙을 위한 빈 공간
     st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+
+    # 🔹 중앙 컨테이너
     center_col = st.columns([1, 2, 1])[1]
 
     with center_col:
+
         st.markdown(
             """
             <style>
@@ -66,7 +77,9 @@ if not st.session_state.authenticated:
                 text-align: center;
                 color: #f5f2f2;
             }
-            input[type="password"] { text-align: center; }
+            input[type="password"] {
+                text-align: center;
+            }
             </style>
             """,
             unsafe_allow_html=True,
@@ -100,12 +113,15 @@ if not st.session_state.authenticated:
                 st.error("비밀번호가 올바르지 않습니다.")
 
     st.stop()
-
+    
 # ============================
 # 🔑 API Key Input (Session Memory)
 # ============================
+
 if "api_key" not in st.session_state:
+
     st.markdown("### 🔑 OpenAI API Key")
+
     api_key_input = st.text_input(
         "OpenAI API Key",
         type="password",
@@ -116,8 +132,8 @@ if "api_key" not in st.session_state:
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            openai.Model.list()
-            st.session_state.api_key = api_key_input
+            openai.Model.list()   # ✅ 키 유효성 검사
+            st.session_state.api_key = api_key_input  # 🔥 세션에 저장
             st.success("API Key 인증 완료")
             st.rerun()
         except Exception:
@@ -125,39 +141,37 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
-openai.api_key = st.session_state.api_key
+# ============================
+# 🔄 Reuse API Key from Session
+# ============================
+
+if "api_key" in st.session_state:
+    openai.api_key = st.session_state.api_key
+else:
+    st.warning("API Key를 먼저 입력하세요.")
+    st.stop()
 
 # ----------------------------
 # 🎨 스타일
 # ----------------------------
 st.markdown(
     """
+    
     <style>
     body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
     .stButton>button {
-        border-radius: 10px;
-        background-color: #4a6cf7;
-        color: white;
-        border: none;
-        padding: 0.6em 1.2em;
-        font-weight: 600;
+        border-radius: 10px; background-color: #4a6cf7; color: white;
+        border: none; padding: 0.6em 1.2em; font-weight: 600;
     }
     .stButton>button:hover { background-color: #3451c1; }
     .status-bar {
-        background-color: #0e1117;
-        border-radius: 6px;
-        padding: 0.5em;
-        margin-top: 10px;
-        font-size: 0.9em;
+        background-color: #0e1117; border-radius: 6px;
+        padding: 0.5em; margin-top: 10px; font-size: 0.9em;
     }
     .log-box {
-        background-color: #262A32;
-        border-radius: 6px;
-        padding: 0.8em;
-        margin-top: 10px;
-        height: 120px;
-        overflow-y: auto;
-        font-size: 0.85em;
+        background-color: #262A32; border-radius: 6px;
+        padding: 0.8em; margin-top: 10px;
+        height: 120px; overflow-y: auto; font-size: 0.85em;
         border: none;
     }
     </style>
@@ -165,12 +179,16 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ============================
+# ----------------------------
 # 🧭 사이드바
+# ----------------------------
+
+# ============================
+# 🔒 Logout Button
 # ============================
 st.sidebar.title("⚙️ Setting")
+col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
-col1, col2 = st.sidebar.columns(2, gap="small")
 with col1:
     if st.button("🔑 API Key 변경", use_container_width=True):
         st.session_state.pop("api_key", None)
@@ -178,14 +196,26 @@ with col1:
 
 with col2:
     if st.button("🔒 로그아웃", use_container_width=True):
+    # 인증 상태 제거
         st.session_state.pop("authenticated", None)
         st.session_state.pop("api_key", None)
+
+    # URL 토큰 제거
         st.experimental_set_query_params()
+
+    # 전체 리셋
         st.rerun()
 
-# ============================
+
+# ----------------------------
+if st.sidebar.button("🔄 전체 초기화", use_container_width=True):
+    full_reset()
+    st.toast("모든 작업이 초기화되었습니다.")
+    st.rerun()
+
+# ----------------------------
 # 🧠 캐시
-# ============================
+# ----------------------------
 CACHE_DIR = Path(".cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
@@ -220,26 +250,14 @@ def reset_cache():
 def reset_output():
     output_dir = Path("output_docs")
     zip_path = Path("result_documents.zip")
+
     if output_dir.exists():
         shutil.rmtree(output_dir)
     if zip_path.exists():
         zip_path.unlink()
 
-# ============================
-# 🔄 원클릭 전체 초기화
-# ============================
-def full_reset():
-    reset_cache()
-    reset_output()
-    for k in ["progress", "logs", "zip_path"]:
-        st.session_state.pop(k, None)
-
-st.sidebar.markdown("### 🔄 작업 초기화")
-if st.sidebar.button("🔄 전체 초기화", use_container_width=True):
-    full_reset()
-    st.toast("모든 작업이 초기화되었습니다.")
-    st.rerun()
-
+st.sidebar.markdown(
+    """
 
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
