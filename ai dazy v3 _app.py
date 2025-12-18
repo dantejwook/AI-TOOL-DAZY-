@@ -232,6 +232,11 @@ st.sidebar.markdown(
 
 # ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
 
+if st.sidebar.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+    st.session_state.uploader_key += 1
+    st.toast("업로드된 파일이 모두 제거되었습니다.")
+    st.rerun()
+
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
@@ -248,14 +253,6 @@ with col2:
 
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
-
-
-if st.sidebar.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
-    st.session_state.uploader_key += 1
-    st.toast("업로드된 파일이 모두 제거되었습니다.")
-    st.rerun()
-
-
 
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
