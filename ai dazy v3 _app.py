@@ -1,4 +1,4 @@
-#last, rollbac V999
+#last, rollbac api key fix
 
 import streamlit as st
 import zipfile
@@ -42,14 +42,34 @@ st.set_page_config(
 )
 
 # ----------------------------
-# 🔐 OpenAI API 키 설정
+# 🔐 OpenAI API 키 (사용자 입력 방식)
 # ----------------------------
-openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
-    st.sidebar.error("🚨 OpenAI API Key가 없습니다.")
+st.sidebar.subheader("🔑 OpenAI API Key")
+
+user_api_key = st.sidebar.text_input(
+    "API Key 입력",
+    type="password",
+    placeholder="sk-xxxxxxxxxxxxxxxx"
+)
+
+def validate_api_key(key: str) -> bool:
+    try:
+        openai.api_key = key
+        openai.Model.list()
+        return True
+    except Exception:
+        return False
+
+if not user_api_key:
+    st.sidebar.warning("API Key를 입력해야 앱을 사용할 수 있습니다.")
     st.stop()
-else:
-    st.sidebar.success("✅ OpenAI Key 로드 완료")
+
+if not validate_api_key(user_api_key):
+    st.sidebar.error("유효하지 않은 API Key입니다.")
+    st.stop()
+
+openai.api_key = user_api_key
+st.sidebar.success("✅ API Key 인증 완료")
 
 # ----------------------------
 # 🎨 스타일
