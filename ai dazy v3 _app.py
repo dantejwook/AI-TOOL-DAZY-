@@ -72,7 +72,7 @@ st.markdown(
         background-color: #262A32; border-radius: 6px;
         padding: 0.8em; margin-top: 10px;
         height: 120px; overflow-y: auto; font-size: 0.85em;
-        border: 1px solid #dee2e6;
+        border: none;
     }
     .download-box {
         background-color: #262A32;
