@@ -41,6 +41,81 @@ st.set_page_config(
     layout="wide",
 )
 
+# ============================
+# 🔐 API Key Landing Screen
+# ============================
+
+if "api_key_verified" not in st.session_state:
+    st.session_state.api_key_verified = False
+
+if not st.session_state.api_key_verified:
+
+    st.markdown(
+        """
+        <style>
+        .landing-box {
+            max-width: 520px;
+            margin: 120px auto;
+            padding: 2.5rem;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .landing-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .landing-desc {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 1.5rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="landing-box">
+            <div class="landing-title">🔐 OpenAI API Key 필요</div>
+            <div class="landing-desc">
+                이 앱은 <b>개인 OpenAI API Key</b>를 사용하여 동작합니다.<br>
+                키는 저장되지 않으며, 현재 세션에서만 사용됩니다.
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    api_key_input = st.text_input(
+        "OpenAI API Key",
+        type="password",
+        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+        label_visibility="collapsed",
+    )
+
+    def validate_key(key: str) -> bool:
+        try:
+            openai.api_key = key
+            openai.Model.list()
+            return True
+        except Exception:
+            return False
+
+    if api_key_input:
+        if validate_key(api_key_input):
+            st.session_state.api_key_verified = True
+            st.session_state.api_key = api_key_input
+            st.success("✅ 인증 완료. 앱을 시작합니다.")
+            st.rerun()
+        else:
+            st.error("❌ 유효하지 않은 API Key입니다.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
 # ----------------------------
 # 🔐 OpenAI API 키 (사용자 입력 방식)
 # ----------------------------
