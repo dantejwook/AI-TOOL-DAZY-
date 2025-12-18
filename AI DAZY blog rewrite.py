@@ -30,7 +30,7 @@ TOKEN_EXPIRE_HOURS = 3
 # ----------------------------
 st.set_page_config(
     page_title="AI dazy Blog Rewriter",
-    page_icon="🗂️",
+    page_icon="📝",
     layout="wide",
 )
 
