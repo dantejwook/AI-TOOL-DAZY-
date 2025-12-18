@@ -176,7 +176,7 @@ left_col, right_col = st.columns([1, 1])
 st.subheader("AI auto file analyzer")
 
 with left_col:
-    st.subheader("File Upload")
+    st.subheader("파일 업로드")
     uploaded_files = st.file_uploader(
         "📁 문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
@@ -185,25 +185,24 @@ with left_col:
 
 with right_col:
     st.subheader("ZIP Download")
-    st.caption("📁 문서 정리 후 다운로드 버튼이 활성화됩니다")
 
-    zip_exists = Path("result_documents.zip").exists()
+    # 업로드 쪽과 동일한 위치의 설명
+    st.caption("📁문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
-    if zip_exists:
+    # 처리 전에는 버튼 비활성 느낌만 주기
+    if not Path("result_documents.zip").exists():
+        st.button(
+            "[ not ]",
+            disabled=True,
+            use_container_width=True,
+        )
+    else:
         st.download_button(
             "[ Download ]",
             open("result_documents.zip", "rb"),
             file_name="result_documents.zip",
             mime="application/zip",
             use_container_width=True,
-            key="zip_download_button",
-        )
-    else:
-        st.button(
-            "[ Download ]",
-            disabled=True,
-            use_container_width=True,
-            key="zip_download_disabled",
         )
     
 # ----------------------------
@@ -491,9 +490,9 @@ if uploaded_files:
             for f in files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
-
+ 
     st.download_button(
-        "[Download]",
+        "[ Download ]",
         open("result_documents.zip", "rb"),
         file_name="result_documents.zip",
         mime="application/zip",
@@ -501,7 +500,6 @@ if uploaded_files:
         key="zip_download_button",
      )
 
-    
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
