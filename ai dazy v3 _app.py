@@ -21,7 +21,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 1.캐시 초기화 적용 버젼
 # 2.다시시작 버튼 제거
 # 3.대용량 처리 가능
-# 4.사이드바에 사용법 추가가
 
 # ============================
 
@@ -82,28 +81,6 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("✂️ F5 : 초기화")
-st.sidebar.markdown(
-    """
-- ⚙️ 다시 시작하시려면 
--  ㄴ캐시 초기화 > 다운로드 초기화 > F5 순서대로 눌러주세요.
--     ㄴ warning : 중복 다운로드 우려가 있습니다.
-"""
-)
-
-# ▶ 사이드바 버튼 (분리)
-if st.sidebar.button("🧹 캐시 초기화"):
-    reset_cache()
-    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
-    st.rerun()
-
-if st.sidebar.button("🗑️ 결과 폴더 초기화"):
-    reset_output()
-    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
-    st.rerun()
-
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
-
 
 # ----------------------------
 # 🧠 캐시
@@ -148,12 +125,33 @@ def reset_output():
     if zip_path.exists():
         zip_path.unlink()
 
+# ▶ 사이드바 버튼 (분리)
+if st.sidebar.button("🧹 캐시 초기화"):
+    reset_cache()
+    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
+    st.rerun()
+
+if st.sidebar.button("🗑️ 결과 폴더 초기화"):
+    reset_output()
+    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
+    st.rerun()
+
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+st.sidebar.markdown(
+    """
+- ⚙️ 다시 시작하시려면 
+_  ㄴ캐시 초기화 > 다운로드 초기화 > F5 순서대로 눌러주세요.
+-     ㄴ warning : 중복 다운로드 우려가 있습니다.
+"""
+)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
     """
-- ⏳ 업로드 하면 자동으로 시작됩니다.
+- 📁 파일을 업로드하면 자동으로 시작 됩니다.
 - 📂 **여러 문서를 한 번에 업로드**할 수 있습니다.
 - 🧠 문서는 **AI가 자동으로 주제별 분류**합니다.
 - 📁 폴더 수가 많으면 **자동으로 하위 폴더로 분해**됩니다.
