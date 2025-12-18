@@ -42,7 +42,7 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 PASSWORD LANDING (FIRST)
+# 🔒 Password Landing Gate
 # ============================
 
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
@@ -55,27 +55,14 @@ if not st.session_state.authenticated:
     st.markdown(
         """
         <style>
-        .fullscreen-center {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8f9fc;
-            z-index: 9999;
-        }
         .lock-box {
-            width: 420px;
+            max-width: 420px;
+            margin: 140px auto;
             padding: 2.2rem;
-            background: white;
+            background: grey;
             border-radius: 16px;
             box-shadow: 0 12px 32px rgba(0,0,0,0.08);
             text-align: center;
-        }
-        input[type="password"] {
-            text-align: center;
-            max-width: 280px;
-            margin: 0 auto;
         }
         </style>
         """,
@@ -84,12 +71,11 @@ if not st.session_state.authenticated:
 
     st.markdown(
         """
-        <div class="fullscreen-center">
-            <div class="lock-box">
-                <h2>🔒 Access Password</h2>
-                <p style="color:#666;">
-                    이 앱은 제한된 사용자만 접근할 수 있습니다.
-                </p>
+        <div class="lock-box">
+            <h2>🔒 Access Password</h2>
+            <p style="color:#666;">
+                이 앱은 제한된 사용자만 접근할 수 있습니다.
+            </p>
         """,
         unsafe_allow_html=True,
     )
@@ -109,7 +95,7 @@ if not st.session_state.authenticated:
         else:
             st.error("비밀번호가 올바르지 않습니다.")
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 # ----------------------------
