@@ -401,6 +401,9 @@ if uploaded_files:
             f"<div class='status-bar'>정리 중… [{pct}%] ({done} / {total} 파일)</div>",
             unsafe_allow_html=True
         )
+
+        time.sleep(0.01)
+        
         log(f"{main_group} 처리 완료")
 
     zip_path = Path("result_documents.zip")
