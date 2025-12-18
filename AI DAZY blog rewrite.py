@@ -102,8 +102,7 @@ if "api_key" not in st.session_state:
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            openai.Model.list()
-
+            
             TOKEN_STORE[token] = {
                 "api_key": api_key_input,
                 "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
