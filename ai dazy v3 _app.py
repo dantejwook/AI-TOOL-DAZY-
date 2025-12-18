@@ -208,7 +208,10 @@ with col2:
 
 
 # ----------------------------
-st.sidebar.title("✂️ F5 : Reset")
+if st.sidebar.button("🔄 전체 초기화", use_container_width=True):
+    full_reset()
+    st.toast("모든 작업이 초기화되었습니다.")
+    st.rerun()
 
 # ----------------------------
 # 🧠 캐시
@@ -255,31 +258,6 @@ def reset_output():
 
 st.sidebar.markdown(
     """
-
-- ⚙️ 다시 시작하시려면 
--     "Cache Reset > Download Reset > F5 순서대로 눌러주세요."
-"""
-)
-
-# ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
-
-col1, col2 = st.sidebar.columns([1, 1], gap="small")
-
-with col1:
-    if st.button("🧹 Cache Reset", use_container_width=True):
-        reset_cache()
-        st.toast("✅ Cache Reset is complete.")
-        st.rerun()
-
-with col2:
-    if st.button("🗑️ Download Reset", use_container_width=True):
-        reset_output()
-        st.toast("✅ Download Reset is complete.")
-        st.rerun()
-
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
-
 
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
