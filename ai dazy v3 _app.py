@@ -113,35 +113,33 @@ if not st.session_state.authenticated:
                 st.error("비밀번호가 올바르지 않습니다.")
 
     st.stop()
-# ----------------------------
-# 🔐 OpenAI API 키 (사용자 입력 방식)
-# ----------------------------
-st.sidebar.subheader("🔑 OpenAI API Key")
+    
+# ============================
+# 🔑 API Key Input (Session Memory)
+# ============================
 
-user_api_key = st.sidebar.text_input(
-    "API Key 입력",
-    type="password",
-    placeholder="sk-xxxxxxxxxxxxxxxx"
-)
+if "api_key" not in st.session_state:
 
-def validate_api_key(key: str) -> bool:
-    try:
-        openai.api_key = key
-        openai.Model.list()
-        return True
-    except Exception:
-        return False
+    st.markdown("### 🔑 OpenAI API Key")
 
-if not user_api_key:
-    st.sidebar.warning("API Key를 입력해야 앱을 사용할 수 있습니다.")
+    api_key_input = st.text_input(
+        "OpenAI API Key",
+        type="password",
+        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+        label_visibility="collapsed",
+    )
+
+    if api_key_input:
+        try:
+            openai.api_key = api_key_input
+            openai.Model.list()   # ✅ 키 유효성 검사
+            st.session_state.api_key = api_key_input  # 🔥 세션에 저장
+            st.success("API Key 인증 완료")
+            st.rerun()
+        except Exception:
+            st.error("❌ 유효하지 않은 API Key입니다.")
+
     st.stop()
-
-if not validate_api_key(user_api_key):
-    st.sidebar.error("유효하지 않은 API Key입니다.")
-    st.stop()
-
-openai.api_key = user_api_key
-st.sidebar.success("✅ API Key 인증 완료")
 
 # ----------------------------
 # 🎨 스타일
