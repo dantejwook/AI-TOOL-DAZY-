@@ -269,7 +269,7 @@ def merge_drafts(drafts_text):
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
     )
-    return json.loads(r["choices"][0]["message"]["content"])
+    return safe_json_loads(r["choices"][0]["message"]["content"])
 
 # ② SEO 제목 / 메타 (JSON)
 def generate_titles_meta(keyword, count=5):
