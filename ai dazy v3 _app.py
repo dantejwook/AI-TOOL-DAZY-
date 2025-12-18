@@ -12,6 +12,8 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
+from hdbscan import HDBSCAN
+
 
 # ============================
 # 🔧 Recursive Split Settings
