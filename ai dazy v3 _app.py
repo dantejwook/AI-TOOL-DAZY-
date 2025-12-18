@@ -80,7 +80,6 @@ st.markdown(
         padding: 0.8em;
         margin-top: 10px;
         height: 120px;
-        overflow-y: auto;
         font-size: 0.85em;
         border: 1px solid #dee2e6;
     }
