@@ -74,16 +74,7 @@ st.markdown(
         height: 120px; overflow-y: auto; font-size: 0.85em;
         border: none;
     }
-    .download-box {
-        background-color: #262A32;
-        border-radius: 6px;
-        padding: 0.8em;
-        margin-top: 10px;
-        height: 120px;
-        overflow-y: auto;
-        font-size: 0.85em;
-        border: 1px solid rgba(255,255,255,0.08);
-    }
+    
     </style>
     """,
     unsafe_allow_html=True,
