@@ -9,7 +9,7 @@ import hashlib
 import re
 
 # ============================
-# 🔧 ver.2512181454 dazy v3.1 
+# 🔧 ver.2512181454 dazy v3.12 
 # ============================
 
 # ============================
@@ -69,10 +69,64 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
-if st.sidebar.button("🔁 다시 시작"):
-    st.markdown("<script>window.location.reload();</script>", unsafe_allow_html=True)
-
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
+
+# ----------------------------
+# 🧠 캐시
+# ----------------------------
+CACHE_DIR = Path(".cache")
+CACHE_DIR.mkdir(exist_ok=True)
+
+def load_cache(p):
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:
+        return {}
+
+def save_cache(p, d):
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+
+EMBED_CACHE = CACHE_DIR / "embeddings.json"
+GROUP_CACHE = CACHE_DIR / "group_names.json"
+README_CACHE = CACHE_DIR / "readmes.json"
+EXPAND_CACHE = CACHE_DIR / "expands.json"
+
+embedding_cache = load_cache(EMBED_CACHE)
+group_cache = load_cache(GROUP_CACHE)
+readme_cache = load_cache(README_CACHE)
+expand_cache = load_cache(EXPAND_CACHE)
+
+def reset_cache():
+    if CACHE_DIR.exists():
+        shutil.rmtree(CACHE_DIR)
+    CACHE_DIR.mkdir(exist_ok=True)
+    embedding_cache.clear()
+    group_cache.clear()
+    readme_cache.clear()
+    expand_cache.clear()
+
+def reset_output():
+    output_dir = Path("output_docs")
+    zip_path = Path("result_documents.zip")
+
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    if zip_path.exists():
+        zip_path.unlink()
+
+# ▶ 사이드바 버튼 (분리)
+if st.sidebar.button("🧹 캐시 초기화"):
+    reset_cache()
+    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
+    st.rerun()
+
+if st.sidebar.button("🗑️ 결과 폴더 초기화"):
+    reset_output()
+    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
+    st.rerun()
+
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 # ----------------------------
 # 📁 메인 UI
