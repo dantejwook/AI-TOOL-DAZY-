@@ -83,6 +83,7 @@ if not st.session_state.authenticated:
 # ============================
 if "api_key" not in st.session_state:
     st.markdown("### 🔑 OpenAI API Key")
+    st.caption("### 해당앱은 chat gpt를 사용합니다. "")
 
     api_key_input = st.text_input(
         "OpenAI API Key",
