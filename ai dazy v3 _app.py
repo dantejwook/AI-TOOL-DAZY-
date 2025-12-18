@@ -10,7 +10,7 @@ import re
 import shutil
 
 # ============================
-# 🔧 ver.2512181521 v3.1.3
+# 🔧 ver . rollback_patch
 # ============================
 
 # ============================
@@ -70,10 +70,6 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
-lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
-
-st.sidebar.title("🔁 다시 시작(f5)")
-
 
 # ----------------------------
 # 🧠 캐시
@@ -400,7 +396,7 @@ if uploaded_files:
         done += 1
         pct = int(done / total * 100)
         progress.progress(pct)
-        progress_text.markdown(f"<div class='status-bar'>[{pct}% ({done}/{total})]</div>", unsafe_allow_html=True)
+        progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
         log(f"{main_group} 처리 완료")
 
     zip_path = Path("result_documents.zip")
