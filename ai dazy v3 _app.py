@@ -82,7 +82,7 @@ st.markdown(
         height: 120px;
         overflow-y: auto;
         font-size: 0.85em;
-        border: 1px solid #dee2e6;
+        border: 1px solid rgba(255,255,255,0.08);
     }
     </style>
     """,
