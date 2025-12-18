@@ -445,6 +445,17 @@ if uploaded_files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
 
+    end_time = time.time()
+    elapsed = int(end_time - start_time)
+    m, s = divmod(elapsed, 60)
+
+    progress_text.markdown(
+        f"<div class='status-bar'>완료 · 소요 시간 {m}분 {s}초</div>",
+        unsafe_allow_html=True
+    )
+    log(f"총 소요 시간: {m}분 {s}초")
+
+    
     zip_placeholder.download_button(
         "📥 정리된 ZIP 파일 다운로드",
         open(zip_path, "rb"),
