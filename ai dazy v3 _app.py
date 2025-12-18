@@ -232,6 +232,37 @@ def expand_document_with_gpt(file):
     save_cache(EXPAND_CACHE, expand_cache)
     return data
 
+
+# ----------------------------
+# 🔥 병렬 EXPAND 추가 (패치)
+# ----------------------------
+def expand_documents_parallel(files, max_workers=5, sleep_sec=0.1):
+    results = [None] * len(files)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(expand_document_with_gpt, f): idx
+            for idx, f in enumerate(files)
+        }
+
+        for future in as_completed(future_map):
+            idx = future_map[future]
+            try:
+                results[idx] = future.result()
+            except Exception:
+                f = files[idx]
+                title = title_from_filename(f.name)
+                results[idx] = {
+                    "canonical_title": title,
+                    "keywords": title.split(),
+                    "domain": "기타",
+                    "embedding_text": f"제목: {title}",
+                }
+            time.sleep(sleep_sec)
+
+    return results
+
+
 # ----------------------------
 # ✨ 임베딩
 # ----------------------------
@@ -253,7 +284,7 @@ def embed_texts(texts):
 # 📦 클러스터링
 # ----------------------------
 def cluster_documents(files):
-    expanded = [expand_document_with_gpt(f) for f in files]
+    expanded = expand_documents_parallel(files, max_workers=5, sleep_sec=0.1)
     vectors = embed_texts([e["embedding_text"] for e in expanded])
     return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
 
@@ -390,9 +421,9 @@ if uploaded_files:
             )
 
         done += 1
-        pct = int(done / total * 100)
+        pct = int(i / total * 100)
         progress.progress(pct)
-        progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
+        progress_text.markdown(f"<div class='status-bar'>[{pct}%]  {i} / {total} 폴더 처리 중</div>", unsafe_allow_html=True)
         log(f"{main_group} 처리 완료")
 
     zip_path = Path("result_documents.zip")
