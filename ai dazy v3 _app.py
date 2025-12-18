@@ -8,9 +8,7 @@ import json
 import hashlib
 import re
 import shutil
-import time  # ⭐ 추가: 소요 시간 측정
-
-# ⭐ 추가: 병렬 처리용
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================
@@ -21,28 +19,20 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 2.다시시작 버튼 제거 
 # 3.대용량 처리 가능
 # 4.소요시간 기능 추카
+# bug fix
 
 # ============================
 
-# ============================
-# 🔧 재분해 설정
-# ============================
 MAX_FILES_PER_CLUSTER = 25
 MAX_RECURSION_DEPTH = 2
 AUTO_SPLIT_NOTICE = "⚠️ 이 폴더는 파일 수 제한(25개)으로 인해 자동 분해되었습니다.\n\n"
 
-# ----------------------------
-# 🌈 기본 페이지 설정
-# ----------------------------
 st.set_page_config(
     page_title="AI dazy document sorter",
     page_icon="🗂️",
     layout="wide",
 )
 
-# ----------------------------
-# 🔐 OpenAI API 키 설정
-# ----------------------------
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 if not openai.api_key:
     st.sidebar.error("🚨 OpenAI API Key가 없습니다.")
@@ -50,9 +40,6 @@ if not openai.api_key:
 else:
     st.sidebar.success("✅ OpenAI Key 로드 완료")
 
-# ----------------------------
-# 🎨 스타일
-# ----------------------------
 st.markdown(
     """
     <style>
@@ -77,16 +64,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ----------------------------
-# 🧭 사이드바
-# ----------------------------
 st.sidebar.title("✂️ F5 : 초기화")
 st.sidebar.title("⚙️ 설정")
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
-# ----------------------------
-# 🧠 캐시
-# ----------------------------
 CACHE_DIR = Path(".cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
@@ -109,7 +90,6 @@ group_cache = load_cache(GROUP_CACHE)
 readme_cache = load_cache(README_CACHE)
 expand_cache = load_cache(EXPAND_CACHE)
 
-# ⭐ 추가: 0차 EXPAND 결과 전역 보관
 EXPANDED_MAP = {}
 
 def reset_cache():
@@ -125,13 +105,11 @@ def reset_cache():
 def reset_output():
     output_dir = Path("output_docs")
     zip_path = Path("result_documents.zip")
-
     if output_dir.exists():
         shutil.rmtree(output_dir)
     if zip_path.exists():
         zip_path.unlink()
 
-# ▶ 사이드바 버튼 (분리)
 if st.sidebar.button("🧹 캐시 초기화"):
     reset_cache()
     st.sidebar.success("✅ 캐시가 초기화되었습니다.")
@@ -145,9 +123,6 @@ if st.sidebar.button("🗑️ 결과 폴더 초기화"):
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
-# ----------------------------
-# 📁 메인 UI
-# ----------------------------
 left_col, right_col = st.columns([1, 1])
 
 with left_col:
@@ -162,9 +137,6 @@ with right_col:
     st.subheader("📦 ZIP 다운로드")
     zip_placeholder = st.empty()
 
-# ----------------------------
-# ⚙️ 상태 / 로그
-# ----------------------------
 progress_placeholder = st.empty()
 progress_text = st.empty()
 log_box = st.empty()
@@ -177,22 +149,11 @@ def log(msg):
         unsafe_allow_html=True,
     )
 
-# ----------------------------
-# ✨ 유틸
-# ----------------------------
 def sanitize_folder_name(name: str) -> str:
     name = (name or "").strip()
     name = re.sub(r"[^\w가-힣\s]", "", name)
     name = re.sub(r"\s+", "_", name)
     return name.strip("_") or "기타_문서"
-
-def unique_folder_name(base: str, existing: set) -> str:
-    if base not in existing:
-        return base
-    i = 1
-    while f"{base}_{i}" in existing:
-        i += 1
-    return f"{base}_{i}"
 
 def title_from_filename(file_name: str) -> str:
     base = file_name.rsplit(".", 1)[0]
@@ -200,9 +161,6 @@ def title_from_filename(file_name: str) -> str:
     base = re.sub(r"\s+", " ", base).strip()
     return base
 
-# ----------------------------
-# 🧠 0차 GPT EXPAND
-# ----------------------------
 def expand_document_with_gpt(file):
     key = h(file.name)
     if key in expand_cache:
@@ -210,36 +168,15 @@ def expand_document_with_gpt(file):
 
     fallback_title = title_from_filename(file.name)
 
-    prompt = f"""
-다음 문서를 분류하기 쉽게 의미적으로 정규화하라.
-분류나 그룹핑은 하지 말고, 의미만 추출하라.
-
-출력은 반드시 JSON 하나만 출력한다.
-
-형식:
-{{
-  "canonical_title": "...",
-  "keywords": ["...", "..."],
-  "domain": "...",
-  "embedding_text": "..."
-}}
-
-문서 파일명:
-{file.name}
-"""
-
     try:
         r = openai.ChatCompletion.create(
             model="gpt-5-nano",
             messages=[
                 {"role": "system", "content": "너는 문서를 분류하기 쉽게 정규화하는 역할이다."},
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": file.name},
             ],
-            temperature=0.2,
         )
         data = json.loads(r["choices"][0]["message"]["content"])
-        if "embedding_text" not in data:
-            raise ValueError
     except Exception:
         data = {
             "canonical_title": fallback_title,
@@ -252,9 +189,6 @@ def expand_document_with_gpt(file):
     save_cache(EXPAND_CACHE, expand_cache)
     return data
 
-# ----------------------------
-# ⭐ 병렬 EXPAND
-# ----------------------------
 def expand_documents_parallel(files, max_workers=5):
     results = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -264,17 +198,11 @@ def expand_documents_parallel(files, max_workers=5):
             results[f] = future.result()
     return [results[f] for f in files]
 
-# ----------------------------
-# ⭐ 추가: 0차 EXPAND 1회 사전 계산
-# ----------------------------
 def precompute_expand(files):
     expanded = expand_documents_parallel(files, max_workers=5)
     for f, e in zip(files, expanded):
         EXPANDED_MAP[f] = e
 
-# ----------------------------
-# ✨ 임베딩
-# ----------------------------
 def embed_texts(texts):
     missing = [t for t in texts if h(t) not in embedding_cache]
     if missing:
@@ -287,17 +215,11 @@ def embed_texts(texts):
         save_cache(EMBED_CACHE, embedding_cache)
     return [embedding_cache[h(t)] for t in texts]
 
-# ----------------------------
-# 📦 클러스터링
-# ----------------------------
 def cluster_documents(files):
     expanded = [EXPANDED_MAP[f] for f in files]
     vectors = embed_texts([e["embedding_text"] for e in expanded])
     return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
 
-# ----------------------------
-# 🔁 자동 재분해
-# ----------------------------
 def recursive_cluster(files, depth=0):
     if len(files) <= MAX_FILES_PER_CLUSTER or depth >= MAX_RECURSION_DEPTH:
         return [files]
@@ -315,9 +237,6 @@ def recursive_cluster(files, depth=0):
             result.append(g)
     return result
 
-# ----------------------------
-# ✨ GPT 폴더명 / README
-# ----------------------------
 def generate_group_name(names):
     k = h("||".join(sorted(names)))
     if k in group_cache:
@@ -325,50 +244,25 @@ def generate_group_name(names):
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
-            {"role": "user", "content": "\n".join(names)},
-        ],
+        messages=[{"role": "user", "content": "\n".join(names)}],
     )
     name = sanitize_folder_name(r["choices"][0]["message"]["content"])
     group_cache[k] = name
     save_cache(GROUP_CACHE, group_cache)
     return name
 
-def generate_readme(topic, files, auto_split=False):
-    k = h(topic + "||" + "||".join(sorted(files)))
-    if k in readme_cache:
-        return readme_cache[k]
-
-    prompt = f"""
-다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
-각 문서의 관계와 활용 목적을 설명하는 README.md를 작성하세요.
-"""
-
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    content = r["choices"][0]["message"]["content"].strip()
-    readme_cache[k] = content
-    save_cache(README_CACHE, readme_cache)
-    return content
-
 # ----------------------------
 # 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
-    start_time = time.time()  # ⭐ 시작 시간
+    start_time = time.time()
 
     uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
     reset_output()
 
-    progress = progress_placeholder.progress(0)
     log("파일 업로드 완료")
     log("0차 EXPAND 사전 계산 시작")
-
     precompute_expand(uploaded_files)
-
     log("0차 EXPAND 사전 계산 완료")
 
     top_clusters = recursive_cluster(uploaded_files)
@@ -380,6 +274,11 @@ if uploaded_files:
 
     for cluster_files in top_clusters:
         main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
+        main_group = sanitize_folder_name(main_group)
+        if not main_group:
+            main_group = "기타_문서"
+        main_group = main_group[:50]
+
         main_folder = output_dir / main_group
         main_folder.mkdir(parents=True, exist_ok=True)
 
@@ -388,7 +287,7 @@ if uploaded_files:
 
         done += 1
         pct = int(done / total * 100)
-        progress.progress(pct)
+        progress_placeholder.progress(pct)
         progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
 
     zip_path = Path("result_documents.zip")
@@ -398,10 +297,8 @@ if uploaded_files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
 
-    end_time = time.time()
-    elapsed = int(end_time - start_time)
+    elapsed = int(time.time() - start_time)
     m, s = divmod(elapsed, 60)
-
     progress_text.markdown(
         f"<div class='status-bar'>완료 · 소요 시간 {m}분 {s}초</div>",
         unsafe_allow_html=True
@@ -417,3 +314,4 @@ if uploaded_files:
 
 else:
     progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
+    log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
