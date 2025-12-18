@@ -274,9 +274,9 @@ def embed_texts(texts):
 # ----------------------------
 def cluster_documents(files):
     expanded = expand_documents_parallel(files, max_workers=5, sleep_sec=0.1)
-    embed_inputs = [e["embedding_text"] for e in expanded]
-    vectors = embed_texts(embed_inputs)
-    return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
+    texts = [e["embedding_text"] for e in expanded]
+    vectors = embed_texts(texts)
+    return cluster_vectors(vectors)
 
 # ----------------------------
 # 🔁 자동 재분해
