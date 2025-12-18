@@ -104,18 +104,6 @@ if st.sidebar.button("🗑️ 결과 폴더 초기화"):
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 💡 사용 팁")
-st.sidebar.markdown(
-    """
-- ⏳ 업로드 하면 자동으로 시작됩니다.
-- 📂 **여러 문서를 한 번에 업로드**할 수 있습니다.
-- 🧠 문서는 **AI가 자동으로 주제별 분류**합니다.
-- 📁 폴더 수가 많으면 **자동으로 하위 폴더로 분해**됩니다.
-- ⏳ 문서 수가 많을수록 처리 시간이 늘어납니다.
-- 📦 완료 후 **ZIP 파일로 한 번에 다운로드**할 수 있습니다.
-"""
-)
 
 # ----------------------------
 # 🧠 캐시
@@ -159,6 +147,20 @@ def reset_output():
         shutil.rmtree(output_dir)
     if zip_path.exists():
         zip_path.unlink()
+
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 💡 사용 팁")
+st.sidebar.markdown(
+    """
+- ⏳ 업로드 하면 자동으로 시작됩니다.
+- 📂 **여러 문서를 한 번에 업로드**할 수 있습니다.
+- 🧠 문서는 **AI가 자동으로 주제별 분류**합니다.
+- 📁 폴더 수가 많으면 **자동으로 하위 폴더로 분해**됩니다.
+- ⏳ 문서 수가 많을수록 처리 시간이 늘어납니다.
+- 📦 완료 후 **ZIP 파일로 한 번에 다운로드**할 수 있습니다.
+"""
+)
 
 # ----------------------------
 # 📁 메인 UI
