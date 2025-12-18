@@ -292,21 +292,13 @@ with right_col:
     st.subheader("ZIP Download")
     st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
-    st.markdown(
-        '<div class="download-box">',
-        unsafe_allow_html=True,
-    )
+    zip_placeholder = st.empty()   # 👈 위에 두고
 
-    zip_placeholder = st.empty()
-
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("<br>", unsafe_allow_html=True)  # 약간 간격
 
     if st.button("Download Reset", use_container_width=True):
         reset_output()
-        st.toast("✅ Download Reset is complete.")
+        st.toast("다운로드 결과가 초기화되었습니다.")
         st.rerun()
 
 
