@@ -303,6 +303,25 @@ with right_col:
         '</div>',
         unsafe_allow_html=True,
     )
+# ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
+col1, col2 = st.sidebar.columns([1, 1], gap="small")
+
+with col1:
+    if button("Cache Reset", use_container_width=True):
+        reset_cache()
+        st.toast("✅ Cache Reset is complete.")
+        st.rerun()
+
+with col2:
+    if button("Download Reset", use_container_width=True):
+        reset_output()
+        st.toast("✅ Download Reset is complete.")
+        st.rerun()
+
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+
 
 # ----------------------------
 # ⚙️ 상태 / 로그
