@@ -291,9 +291,8 @@ with left_col:
         key=f"uploader_{st.session_state.uploader_key}",
     )
     # ✅ 반드시 여기 안에서
-    col1, col2, col3 = st.columns([1, 1, 1], gap="small")
-
-    with col1:
+    col2, col3 = st.columns([1, 1, 1], gap="small")
+    
         if st.button("Upload File Reset", use_container_width=True):
             st.session_state.uploader_key += 1
             st.rerun()
