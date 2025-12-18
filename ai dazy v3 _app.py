@@ -56,7 +56,7 @@ if not st.session_state.authenticated:
         """
         <style>
         .lock-box {
-            max-width: 420px;
+            max-width: 200px;
             margin: 140px auto;
             padding: 2.2rem;
             background: white;
@@ -88,7 +88,7 @@ if not st.session_state.authenticated:
     )
 
     if password_input:
-        if password_input == APP_PASSWORD:
+        if password_input == APP_PASSWORD:150616
             st.session_state.authenticated = True
             st.success("접근 허용")
             st.rerun()
@@ -97,6 +97,7 @@ if not st.session_state.authenticated:
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
+
 # ----------------------------
 # 🔐 OpenAI API 키 (사용자 입력 방식)
 # ----------------------------
