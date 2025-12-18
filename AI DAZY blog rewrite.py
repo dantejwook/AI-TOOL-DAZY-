@@ -29,7 +29,7 @@ TOKEN_EXPIRE_HOURS = 3
 # 🌈 기본 페이지 설정 (유지)
 # ----------------------------
 st.set_page_config(
-    page_title="AI dazy document sorter",
+    page_title="AI dazy Blog Rewriter",
     page_icon="🗂️",
     layout="wide",
 )
