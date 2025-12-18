@@ -492,7 +492,7 @@ if uploaded_files:
                 z.write(p, arcname=os.path.relpath(p, output_dir))
  
     zip_placeholder.download_button(
-        "📥 정리된 ZIP 파일 다운로드",
+        "[ Download ]",
         open(zip_path, "rb"),
         file_name=zip_path.name,
         mime="application/zip",
