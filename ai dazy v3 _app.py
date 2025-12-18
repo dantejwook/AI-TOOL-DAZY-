@@ -90,7 +90,9 @@ if "api_key" not in st.session_state:
         placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
         label_visibility="collapsed",
     )
-
+    st.caption("입력한 API Key는 서버에 저장되지 않습니다.")
+    st.caption("해당앱은 chat gpt api를 사용합니다. ")
+    
     if api_key_input:
         try:
             openai.api_key = api_key_input
