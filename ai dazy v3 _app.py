@@ -138,16 +138,16 @@ st.sidebar.markdown(
 col1, col2 = st.sidebar.columns(2)
 
 with col1:
-if st.sidebar.button("🧹 Cache Reset"):
-    reset_cache()
-    st.sidebar.success("✅ Cache Reset is complete.")
-    st.rerun()
+   if st.sidebar.button("🧹 Cache Reset"):
+       reset_cache()
+       st.sidebar.success("✅ Cache Reset is complete.")
+       st.rerun()
 
 with col2:
-if st.sidebar.button("🗑️ Download Reset"):
-    reset_output()
-    st.sidebar.success("✅ Download Reset is complete.")
-    st.rerun()
+   if st.sidebar.button("🗑️ Download Reset"):
+       reset_output()
+       st.sidebar.success("✅ Download Reset is complete.")
+       st.rerun()
 
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
