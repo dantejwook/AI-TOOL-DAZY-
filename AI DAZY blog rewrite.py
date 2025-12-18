@@ -343,6 +343,7 @@ if uploaded_files:
     log("초안 병합 완료")
 
     # ② 제목/메타
+    keyword = merged.get("core_topic", "")
     seo_list = generate_titles_meta(keyword, 5)
     chosen = seo_list[0]
     progress.progress(60)
