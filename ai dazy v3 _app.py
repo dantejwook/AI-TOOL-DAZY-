@@ -18,7 +18,7 @@ from pathlib import Path
 # ============================
 TOKEN_STORE_PATH = Path(".cache/token_store.json")
 TOKEN_STORE_PATH.parent.mkdir(exist_ok=True)
-TOKEN_STORE = {}
+TOKEN_STORE = load_token_store()
 TOKEN_EXPIRE_HOURS = 3
 
 # ----------------------------
