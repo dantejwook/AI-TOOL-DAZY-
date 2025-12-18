@@ -191,8 +191,6 @@ with left_col:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with right_col:
-    st.markdown('<div class="center-all">', unsafe_allow_html=True)
-
     st.subheader("📦 ZIP 다운로드")
     st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
@@ -200,7 +198,7 @@ with right_col:
         st.markdown('<div class="left-download">', unsafe_allow_html=True)
         
         st.download_button(
-            "📦 정리된 ZIP 파일 다운로드",
+            "📦Download📦",
             open("result_documents.zip", "rb"),
             file_name="result_documents.zip",
             mime="application/zip",
