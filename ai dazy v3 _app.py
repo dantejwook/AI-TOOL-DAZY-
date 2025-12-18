@@ -149,10 +149,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
-    st.session_state.uploader_key += 1
-    st.toast("업로드된 파일이 모두 제거되었습니다.")
-    st.rerun()
+
 
 # ----------------------------
 # 🧭 사이드바
@@ -285,14 +282,11 @@ with left_col:
         type=["md", "pdf", "txt"],
         key=f"uploader_{st.session_state.uploader_key}",
     )
-    
-  
     if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
-        st.session_state.uploader_key += 1
-        st.toast("업로드된 파일이 모두 제거되었습니다.")
-        st.rerun()
-
-
+    st.session_state.uploader_key += 1
+    st.toast("업로드된 파일이 모두 제거되었습니다.")
+    st.rerun()
+    
 with right_col:
     st.subheader("ZIP Download")
     st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
