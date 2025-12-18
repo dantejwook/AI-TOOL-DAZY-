@@ -486,6 +486,7 @@ if uploaded_files:
             for f in files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
+    
     if not st.session_state.zip_rerun_done:
         st.session_state.zip_rerun_done = True
         st.rerun()
