@@ -42,35 +42,27 @@ st.set_page_config(
 )
 
 # ============================
-# 🔐 API Key Landing Screen
+# 🔒 Password Landing Gate
 # ============================
 
-if "api_key_verified" not in st.session_state:
-    st.session_state.api_key_verified = False
+APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
-if not st.session_state.api_key_verified:
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
 
     st.markdown(
         """
         <style>
-        .landing-box {
-            max-width: 520px;
-            margin: 120px auto;
-            padding: 2.5rem;
+        .lock-box {
+            max-width: 420px;
+            margin: 140px auto;
+            padding: 2.2rem;
             background: white;
-            border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border-radius: 16px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.08);
             text-align: center;
-        }
-        .landing-title {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-        .landing-desc {
-            font-size: 0.95rem;
-            color: #555;
-            margin-bottom: 1.5rem;
         }
         </style>
         """,
@@ -79,43 +71,32 @@ if not st.session_state.api_key_verified:
 
     st.markdown(
         """
-        <div class="landing-box">
-            <div class="landing-title">🔐 OpenAI API Key 필요</div>
-            <div class="landing-desc">
-                이 앱은 <b>개인 OpenAI API Key</b>를 사용하여 동작합니다.<br>
-                키는 저장되지 않으며, 현재 세션에서만 사용됩니다.
-            </div>
+        <div class="lock-box">
+            <h2>🔒 Access Password</h2>
+            <p style="color:#666;">
+                이 앱은 제한된 사용자만 접근할 수 있습니다.
+            </p>
         """,
         unsafe_allow_html=True,
     )
 
-    api_key_input = st.text_input(
-        "OpenAI API Key",
+    password_input = st.text_input(
+        "Password",
         type="password",
-        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+        placeholder="비밀번호 입력",
         label_visibility="collapsed",
     )
 
-    def validate_key(key: str) -> bool:
-        try:
-            openai.api_key = key
-            openai.Model.list()
-            return True
-        except Exception:
-            return False
-
-    if api_key_input:
-        if validate_key(api_key_input):
-            st.session_state.api_key_verified = True
-            st.session_state.api_key = api_key_input
-            st.success("✅ 인증 완료. 앱을 시작합니다.")
+    if password_input:
+        if password_input == APP_PASSWORD:
+            st.session_state.authenticated = True
+            st.success("접근 허용")
             st.rerun()
         else:
-            st.error("❌ 유효하지 않은 API Key입니다.")
+            st.error("비밀번호가 올바르지 않습니다.")
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
-
 # ----------------------------
 # 🔐 OpenAI API 키 (사용자 입력 방식)
 # ----------------------------
