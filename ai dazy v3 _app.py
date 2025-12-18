@@ -14,6 +14,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # ============================
+# 🔧 Recursive Split Settings
+# ============================
+MAX_FILES_PER_CLUSTER = 25
+MAX_RECURSION_DEPTH = 2
+
+# ============================
 # 🔐 Token Store (Server Memory)
 # ============================
 TOKEN_STORE = {}
