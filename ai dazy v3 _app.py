@@ -491,11 +491,12 @@ if uploaded_files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
  
-    zip_placeholder.download_button(
+    st.download_button(
         "[ Download ]",
-        open(zip_path, "rb"),
-        file_name=zip_path.name,
+        open("result_documents.zip", "rb"),
+        file_name="result_documents.zip",
         mime="application/zip",
+        use_container_width=True,
     )
 
     progress.progress(100)
