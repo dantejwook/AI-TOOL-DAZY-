@@ -73,7 +73,7 @@ if not st.session_state.authenticated:
         """
         <div class="lock-box">
             <h2>🔒 Access Password</h2>
-            <p style="color:#666;">
+            <p style="color:#f5f2f2;">
                 이 앱은 제한된 사용자만 접근할 수 있습니다.
             </p>
         """,
