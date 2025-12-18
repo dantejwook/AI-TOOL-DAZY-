@@ -491,8 +491,7 @@ if uploaded_files:
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
 
-    st.rerun()
-
+  
 else:
     progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
