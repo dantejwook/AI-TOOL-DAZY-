@@ -10,10 +10,6 @@ import re
 import shutil
 
 # ============================
-# 🔧 ver . rollback_patch
-# ============================
-
-# ============================
 # 🔧 재분해 설정
 # ============================
 MAX_FILES_PER_CLUSTER = 25
@@ -243,8 +239,8 @@ def embed_texts(texts):
     missing = [t for t in texts if h(t) not in embedding_cache]
 
     if missing:
-        r = openai.Embedding.create(
-            model="text-embedding-3-large",
+        r = openai.ChatCompletion.create(
+            model="gpt-5-nano",
             input=missing,
         )
         for t, d in zip(missing, r["data"]):
