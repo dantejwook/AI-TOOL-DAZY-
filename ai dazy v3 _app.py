@@ -197,6 +197,8 @@ with right_col:
     st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
     if Path("result_documents.zip").exists():
+        st.markdown('<div class="left-download">', unsafe_allow_html=True)
+        
         st.download_button(
             "📦 정리된 ZIP 파일 다운로드",
             open("result_documents.zip", "rb"),
