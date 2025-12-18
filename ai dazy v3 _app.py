@@ -191,7 +191,7 @@ with left_col:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with right_col:
-    st.subheader("📦 ZIP 다운로드")
+    st.subheader("📦 ZIP Download")
     st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
     if Path("result_documents.zip").exists():
@@ -206,7 +206,7 @@ with right_col:
         )
     else:
         st.button(
-            "📦 정리된 ZIP 파일 다운로드",
+            "📦Download📦",
             disabled=True,
             use_container_width=True,
         )
