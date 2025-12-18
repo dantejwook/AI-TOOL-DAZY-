@@ -71,9 +71,6 @@ st.markdown(
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 
-if st.sidebar.button("🔁 다시 시작"):
-    st.rerun()
-
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
@@ -307,7 +304,7 @@ def generate_group_name(names):
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
+        model="gpt-5-nano",
         messages=[
             {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
             {"role": "user", "content": prompt + "\n" + "\n".join(names)},
