@@ -273,55 +273,63 @@ def merge_drafts(drafts_text):
 
 # ② SEO 제목 / 메타 (JSON)
 def generate_titles_meta(keyword, count=5):
-    prompt = f"""
-당신은 SEO 최적화 블로그 전략가입니다.
+    # keyword가 비어있으면 JSON 출력이 흔들릴 수 있어 최소 방어
+    keyword = (keyword or "").strip()
+    if not keyword:
+        keyword = "기술 블로그"
 
+    prompt = f"""
+<제목, 메타 프롬프트>
+
+당신은 SEO 최적화 블로그 전략가입니다. 사용자 키워드에 대해 검색 의도와 카테고리를 고려하여 클릭을 유도하는 한국어 제목과 메타 설명을 작성하세요.
 요구사항:
 - 결과 수: {count}
-- 각 결과는 JSON 객체
-- 필드: title, meta_description, tags
-- 제목 45~60자
-- 메타 설명 120~155자
+- 각 결과는 JSON 객체 형식으로 출력하세요. 필드: title(문자열), meta_description(문자열), tags(문자열 배열)
+- 제목은 45~60자 내외, 메타 설명은 120~155자 내외
 - 키워드: '{keyword}'
+- 상업적/정보/내비게이션 의도 중 적절히 혼합
 - 중복 없이 다양하게
+출력은 반드시 JSON 배열 형식만으로 제공하세요.
 
-출력은 반드시 JSON 배열만 제공
+중요:
+- 설명/서문/코드펜스/추가 텍스트 절대 금지
+- 반드시 '[' 로 시작해서 ']' 로 끝나는 JSON 배열만 출력
 """
+
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+        messages=[
+            {"role": "system", "content": "너는 오직 JSON 배열만 출력한다. 다른 텍스트를 절대 출력하지 않는다."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.2,
     )
-    return json.loads(r["choices"][0]["message"]["content"])
 
-# ③ 본문 작성 (Markdown)
-def generate_blog_body(merged, keyword, title, meta_description):
-    prompt = f"""
-당신은 전문 테크 라이터이자 SEO 전문가입니다.
-
-요구사항:
-- H1 1개
-- H2/H3 구조
-- 도입부 문제 정의 + 해결 약속
-- 사례 / 목록 / 표 활용
-- 결론에 CTA 포함
-- 1,200~1,800자
-- 마크다운
-
-키워드: {keyword}
-제목: {title}
-메타 설명: {meta_description}
-
-정리본:
-{json.dumps(merged, ensure_ascii=False)}
-"""
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.45,
-    )
-    return r["choices"][0]["message"]["content"]
-
+    raw = r["choices"][0]["message"]["content"]
+    try:
+        data = safe_json_loads(raw)
+        # 최소 검증: 배열이어야 함
+        if not isinstance(data, list) or len(data) == 0:
+            raise ValueError("Not a non-empty JSON array")
+        return data
+    except Exception:
+        # 로그에 원문 일부만 남기면 디버깅 쉬움 (UI 변경 없이 log 사용)
+        log("⚠️ SEO JSON 파싱 실패 → 결과 재시도")
+        # 1회 재시도(temperature 낮게)
+        r2 = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "JSON 배열만 출력. 다른 글자 출력 금지."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+        )
+        raw2 = r2["choices"][0]["message"]["content"]
+        data2 = safe_json_loads(raw2)
+        if not isinstance(data2, list) or len(data2) == 0:
+            raise ValueError("SEO JSON still invalid")
+        return data2
+        
 # ----------------------------
 # 🚀 메인 처리 (UI 흐름 유지)
 # ----------------------------
