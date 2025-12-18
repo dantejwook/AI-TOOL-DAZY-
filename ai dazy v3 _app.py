@@ -491,7 +491,17 @@ if uploaded_files:
             for f in files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
- 
+
+    st.download_button(
+        "[Download]",
+        open("result_documents.zip", "rb"),
+        file_name="result_documents.zip",
+        mime="application/zip",
+        use_container_width=True,
+        key="zip_download_button",
+     )
+
+    
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
