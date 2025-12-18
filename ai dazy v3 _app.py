@@ -192,13 +192,13 @@ with right_col:
     # 처리 전에는 버튼 비활성 느낌만 주기
     if not Path("result_documents.zip").exists():
         st.button(
-            "[Download]",
+            "[ Download ]",
             disabled=True,
             use_container_width=True,
         )
     else:
         st.download_button(
-            "[Download]",
+            "[ Download ]",
             open("result_documents.zip", "rb"),
             file_name="result_documents.zip",
             mime="application/zip",
