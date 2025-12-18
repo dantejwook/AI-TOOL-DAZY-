@@ -192,7 +192,7 @@ with right_col:
     # 처리 전에는 버튼 비활성 느낌만 주기
     if not Path("result_documents.zip").exists():
         st.button(
-            "📥 정리된 ZIP 파일 다운로드",
+            "📦 정리된 ZIP 파일 다운로드",
             disabled=True,
             use_container_width=True,
         )
