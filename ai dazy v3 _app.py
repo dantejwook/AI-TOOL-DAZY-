@@ -45,7 +45,7 @@ st.set_page_config(
 # 🔒 Password Landing Gate
 # ============================
 
-APP_PASSWORD = st.secrets.get("8888") or os.getenv("8888")
+APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
