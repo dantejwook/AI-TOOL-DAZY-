@@ -42,8 +42,10 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password + Token Gate
+# 🔒 Password + Token Landing Gate
 # ============================
+
+import secrets
 
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
@@ -54,36 +56,37 @@ has_token = "auth" in params
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# 토큰이 있으면 바로 인증
+# 토큰 있으면 인증 유지
 if has_token:
     st.session_state.authenticated = True
 
-# 인증 안 된 경우 → 비밀번호 랜딩
+# 인증 안 된 경우 → 랜딩
 if not st.session_state.authenticated:
 
     st.markdown(
         """
         <style>
-        .fullscreen-center {
+        .fullscreen {
             position: fixed;
             inset: 0;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8f9fc;
+            align-items: center;      /* ⬆⬇ 세로 중앙 */
+            justify-content: center;  /* ⬅➡ 가로 중앙 */
+            background-color: #2f2f2f;
             z-index: 9999;
         }
         .lock-box {
             width: 420px;
             padding: 2.2rem;
-            background: grey;
+            background: #444;
             border-radius: 16px;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
             text-align: center;
+            color: #f5f2f2;
         }
         input[type="password"] {
             text-align: center;
-            max-width: 280px;
+            max-width: 260px;
             margin: 0 auto;
         }
         </style>
@@ -93,11 +96,11 @@ if not st.session_state.authenticated:
 
     st.markdown(
         """
-        <div class="fullscreen-center">
+        <div class="fullscreen">
             <div class="lock-box">
                 <h2>🔒 Access Password</h2>
-                <p style="color:#f5f2f2;">
-                    비밀번호를 입력하면 접근이 허용됩니다.
+                <p>
+                    이 앱은 제한된 사용자만 접근할 수 있습니다.
                 </p>
         """,
         unsafe_allow_html=True,
