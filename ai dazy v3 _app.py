@@ -303,7 +303,7 @@ def generate_group_name(names):
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-5-nano",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
             {"role": "user", "content": prompt + "\n" + "\n".join(names)},
