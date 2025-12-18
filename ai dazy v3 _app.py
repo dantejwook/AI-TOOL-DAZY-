@@ -304,7 +304,7 @@ with right_col:
         unsafe_allow_html=True,
     )
 
-    if button("Download Reset", use_container_width=True):
+    if st.button("Download Reset", use_container_width=True):
         reset_output()
         st.toast("✅ Download Reset is complete.")
         st.rerun()
