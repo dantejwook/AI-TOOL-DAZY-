@@ -71,6 +71,9 @@ st.markdown(
 # ----------------------------
 st.sidebar.title("⚙️ 설정")
 
+if st.sidebar.button("🔁 다시 시작"):
+    st.rerun()
+
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
 
 # ----------------------------
@@ -107,24 +110,9 @@ def reset_cache():
     readme_cache.clear()
     expand_cache.clear()
 
-def reset_output():
-    output_dir = Path("output_docs")
-    zip_path = Path("result_documents.zip")
-
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
-    if zip_path.exists():
-        zip_path.unlink()
-
-# ▶ 사이드바 버튼 (분리)
 if st.sidebar.button("🧹 캐시 초기화"):
     reset_cache()
     st.sidebar.success("✅ 캐시가 초기화되었습니다.")
-    st.rerun()
-
-if st.sidebar.button("🗑️ 결과 폴더 초기화"):
-    reset_output()
-    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
     st.rerun()
 
 def h(t: str):
@@ -222,6 +210,7 @@ def expand_document_with_gpt(file):
             ],
             temperature=0.2,
         )
+
         data = json.loads(r["choices"][0]["message"]["content"])
         if "embedding_text" not in data:
             raise ValueError
@@ -304,7 +293,7 @@ def generate_group_name(names):
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-5-nano",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
             {"role": "user", "content": prompt + "\n" + "\n".join(names)},
@@ -354,11 +343,15 @@ if uploaded_files:
     if not uploaded_files:
         st.stop()
 
-    # ▶ 실행 시 결과 폴더 자동 초기화
-    reset_output()
-
+    # ✅ 이전 결과 완전 초기화
     output_dir = Path("output_docs")
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
     output_dir.mkdir(exist_ok=True)
+
+    zip_path = Path("result_documents.zip")
+    if zip_path.exists():
+        zip_path.unlink()
 
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
@@ -401,7 +394,6 @@ if uploaded_files:
         progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
         log(f"{main_group} 처리 완료")
 
-    zip_path = Path("result_documents.zip")
     with zipfile.ZipFile(zip_path, "w") as z:
         for root, _, files in os.walk(output_dir):
             for f in files:
