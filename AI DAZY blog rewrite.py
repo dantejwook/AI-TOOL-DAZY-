@@ -1,4 +1,4 @@
-# AI DAZY v2512190245_1.1 (BLOG REWRITER MODE)
+# AI DAZY v2512190245_1.0
 
 import streamlit as st
 import zipfile
@@ -12,6 +12,12 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
+
+# ============================
+# 🔧 기존 설정값 (유지)
+# ============================
+MAX_FILES_PER_CLUSTER = 25
+MAX_RECURSION_DEPTH = 2
 
 # ============================
 # 🔐 Token Store (Server Memory)
@@ -29,7 +35,7 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password + Token Gate (유지)
+# 🔒 Password + Token Gate
 # ============================
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
@@ -56,6 +62,7 @@ if not st.session_state.authenticated:
                 text-align:center;
                 color:white;">
                 <h2>🔒 Access Password</h2>
+                <p>이 앱은 제한된 사용자만 접근할 수 있습니다.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -76,7 +83,7 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ============================
-# 🔑 API Key Input (유지)
+# 🔑 API Key Input (First Time)
 # ============================
 if "api_key" not in st.session_state:
     st.markdown("### 🔑 OpenAI API Key")
@@ -87,11 +94,20 @@ if "api_key" not in st.session_state:
         placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
         label_visibility="collapsed",
     )
+    st.caption("1️⃣ 해당앱은 chat gpt / openai를 사용합니다. ")
+    st.caption("2️⃣ openai 에서 발급한 api key 를 사용해주세요.")
+    st.caption("3️⃣ api key 발급 받기 : [ https://openai.com/ko-KR/api/ ]")
 
     if api_key_input:
         try:
             openai.api_key = api_key_input
             openai.Model.list()
+
+            TOKEN_STORE[token] = {
+                "api_key": api_key_input,
+                "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
+            }
+
             st.session_state.api_key = api_key_input
             st.success("API Key 인증 완료")
             st.rerun()
@@ -100,7 +116,11 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
-openai.api_key = st.session_state.api_key
+# ============================
+# 📁 File Uploader State (초기 1회)
+# ============================
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
 
 # ----------------------------
 # 🎨 스타일 (유지)
@@ -113,6 +133,7 @@ st.markdown(
         border-radius: 10px; background-color: #4a6cf7; color: white;
         border: none; padding: 0.6em 1.2em; font-weight: 600;
     }
+    .stButton>button:hover { background-color: #3451c1; }
     .status-bar {
         background-color: #0e1117; border-radius: 6px;
         padding: 0.5em; margin-top: 10px; font-size: 0.9em;
@@ -121,6 +142,7 @@ st.markdown(
         background-color: #262A32; border-radius: 6px;
         padding: 0.8em; margin-top: 10px;
         height: 120px; overflow-y: auto; font-size: 0.85em;
+        border: none;
     }
     </style>
     """,
@@ -130,32 +152,37 @@ st.markdown(
 # ----------------------------
 # 🧭 사이드바 (유지)
 # ----------------------------
+openai.api_key = st.session_state.api_key
+
 with st.sidebar:
     st.success("API 인증 성공")
 
-    st.sidebar.title("⚙️ Setting")
-    col1, col2 = st.sidebar.columns([1, 1], gap="small")
+st.sidebar.title("⚙️ Setting")
+col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
-    with col1:
-        if st.button("API Key 변경", use_container_width=True):
-            st.session_state.pop("api_key", None)
-            st.rerun()
+with col1:
+    if st.button("API Key 변경", use_container_width=True):
+        st.session_state.pop("api_key", None)
+        st.rerun()
 
-    with col2:
-        if st.button("로그아웃", use_container_width=True):
-            st.session_state.clear()
-            st.experimental_set_query_params()
-            st.rerun()
+with col2:
+    if st.button("로그아웃", use_container_width=True):
+        st.session_state.pop("authenticated", None)
+        st.session_state.pop("api_key", None)
+        st.experimental_set_query_params()
+        st.rerun()
 
-    st.sidebar.markdown("### 💡 사용 팁")
-    st.sidebar.markdown(
-        """
-- 📁 여러 블로그 초안을 업로드하세요
-- 🧠 AI가 하나의 글로 병합합니다
-- ✍️ SEO 제목/메타/본문 자동 생성
-- 📦 ZIP으로 다운로드
+st.sidebar.markdown("### 💡 사용 팁")
+st.sidebar.markdown(
+    """
+- 📁 파일을 **업로드하면 자동으로 시작** 됩니다.
+- 📂 **여러 문서를 한 번에 업로드**할 수 있습니다.
+- 🧠 문서는 **AI가 하나의 블로그 글로 병합**합니다.
+- ✍️ SEO 제목 / 메타 / 본문을 자동 생성합니다.
+- ⏳ 문서 수가 많을수록 처리 시간이 늘어납니다.
+- 📦 완료 후 **ZIP 파일로 한 번에 다운로드**할 수 있습니다.
 """
-    )
+)
 
 # ----------------------------
 # 📁 메인 UI (유지)
@@ -163,18 +190,37 @@ with st.sidebar:
 left_col, right_col = st.columns([1, 1])
 
 st.subheader("AI auto file analyzer")
-st.caption("블로그 초안을 하나의 SEO 글로 리라이트합니다")
+st.caption("문서를 분석하고 자동으로 구조화합니다")
 
 with left_col:
     st.subheader("File upload")
     uploaded_files = st.file_uploader(
-        "📁블로그 초안 업로드 (.md, .txt)",
+        "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "txt"],
+        key=f"uploader_{st.session_state.uploader_key}",
     )
+    if st.button("Upload File Reset", use_container_width=True):
+        st.session_state.uploader_key += 1
+        st.rerun()
+
+    col2, col3 = st.columns([1, 1], gap="small")
+
+    with col2:
+        if st.button("Cache Reset", use_container_width=True):
+            st.rerun()
+
+    with col3:
+        if st.button("Download Reset", use_container_width=True):
+            if Path("output_docs").exists():
+                shutil.rmtree("output_docs")
+            if Path("result_documents.zip").exists():
+                os.remove("result_documents.zip")
+            st.rerun()
 
 with right_col:
     st.subheader("ZIP Download")
+    st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
     zip_placeholder = st.empty()
 
 # ----------------------------
@@ -193,134 +239,68 @@ def log(msg):
     )
 
 # ----------------------------
-# 🧠 GPT FUNCTIONS (리라이터 전용)
+# 🧠 블로그 리라이터 로직 (교체)
 # ----------------------------
-def merge_drafts(drafts, keyword):
-    prompt = f"""
-당신은 전문 테크 블로그 에디터입니다.
-아래 여러 블로그 초안을 하나의 글로 통합하기 위한 편집용 정리본을 만드세요.
+def merge_and_rewrite(files):
+    drafts = ""
+    for f in files:
+        drafts += f"\n\n---\n\n{f.getvalue().decode('utf-8')}"
 
-요구사항:
-- 최종 글 작성 금지
-- 설명 금지
-- 반드시 JSON 하나만 출력
-
-출력 형식:
-{{
-  "core_topic": "...",
-  "search_intent": "...",
-  "key_points": ["...", "..."],
-  "recommended_structure": ["도입", "본문", "결론"],
-  "merged_notes": "..."
-}}
-
-키워드: {keyword}
-
-초안:
-{drafts}
-"""
-    r = openai.ChatCompletion.create(
-        model="gpt-5-nano",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return json.loads(r["choices"][0]["message"]["content"])
-
-def generate_titles(keyword, count):
-    prompt = f"""
-당신은 SEO 최적화 블로그 전략가입니다.
-요구사항:
-- 결과 수: {count}
-- JSON 배열만 출력
-- title, meta_description, tags 포함
-- 제목 45~60자
-- 메타 설명 120~155자
-- 키워드: '{keyword}'
-"""
-    r = openai.ChatCompletion.create(
-        model="gpt-5-nano",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
-    return json.loads(r["choices"][0]["message"]["content"])
-
-def generate_blog(merged, keyword, title, meta):
     prompt = f"""
 당신은 전문 테크 라이터이자 SEO 전문가입니다.
+
+아래 여러 개의 블로그 초안을 하나의 글로 병합하고
+SEO 최적화된 한국어 블로그 글을 작성하세요.
 
 요구사항:
 - H1 1개
 - H2/H3 구조
+- 도입부 문제 정의 + 해결 약속
+- 결론에 핵심 요약 + CTA
 - 1,200~1,800자
 - 마크다운
-- 결론에 CTA 포함
-
-키워드: {keyword}
-제목: {title}
-메타 설명: {meta}
-
-정리본:
-{json.dumps(merged, ensure_ascii=False)}
 """
+
     r = openai.ChatCompletion.create(
         model="gpt-5-nano",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.45,
+        messages=[{"role": "user", "content": prompt + drafts}],
+        temperature=0.4,
     )
     return r["choices"][0]["message"]["content"]
 
 # ----------------------------
-# 🚀 메인 실행
+# 🚀 메인 처리 (유지)
 # ----------------------------
 if uploaded_files:
-    keyword = st.text_input("SEO 키워드 입력")
+    output_dir = Path("output_docs")
+    output_dir.mkdir(exist_ok=True)
 
-    if keyword:
-        progress = progress_placeholder.progress(0)
-        progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
+    progress = progress_placeholder.progress(0)
+    progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
+    log("파일 업로드 완료")
 
-        drafts = ""
-        for f in uploaded_files:
-            drafts += f"\n\n---\n\n{f.getvalue().decode('utf-8')}"
+    blog_md = merge_and_rewrite(uploaded_files)
+    progress.progress(80)
+    log("블로그 병합 및 리라이트 완료")
 
-        log("초안 병합 중...")
-        merged = merge_drafts(drafts, keyword)
-        progress.progress(30)
+    (output_dir / "blog_post.md").write_text(blog_md, encoding="utf-8")
 
-        log("SEO 제목 생성 중...")
-        titles = generate_titles(keyword, 5)
-        progress.progress(60)
+    zip_path = Path("result_documents.zip")
+    with zipfile.ZipFile(zip_path, "w") as z:
+        z.write(output_dir / "blog_post.md", "blog_post.md")
 
-        chosen = titles[0]
-        log("본문 작성 중...")
-        blog_md = generate_blog(merged, keyword, chosen["title"], chosen["meta_description"])
-        progress.progress(90)
+    zip_placeholder.download_button(
+        "[ Download ]",
+        open(zip_path, "rb"),
+        file_name="result_documents.zip",
+        mime="application/zip",
+        use_container_width=True,
+        key="zip_download",
+    )
 
-        output_dir = Path("output_docs")
-        output_dir.mkdir(exist_ok=True)
-
-        (output_dir / "blog_post.md").write_text(blog_md, encoding="utf-8")
-        (output_dir / "seo_titles.json").write_text(
-            json.dumps(titles, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-
-        zip_path = Path("result_documents.zip")
-        with zipfile.ZipFile(zip_path, "w") as z:
-            for f in output_dir.iterdir():
-                z.write(f, f.name)
-
-        zip_placeholder.download_button(
-            "[ Download ]",
-            open(zip_path, "rb"),
-            file_name="blog_result.zip",
-            mime="application/zip",
-            use_container_width=True,
-        )
-
-        progress.progress(100)
-        progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
-        log("✅ 블로그 생성 완료")
+    progress.progress(100)
+    progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
+    log("모든 문서 정리 완료")
 
 else:
     progress_placeholder.progress(0)
