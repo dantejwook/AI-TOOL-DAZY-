@@ -1,10 +1,17 @@
 # AI DAZY v2512190212_1.1 (API Token Session Enabled)
 
 import streamlit as st
+import zipfile
 import os
 import openai
+import json
+import hashlib
+import re
+import shutil
 import secrets
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # ============================
 # 🔐 Token Store (Server Memory)
