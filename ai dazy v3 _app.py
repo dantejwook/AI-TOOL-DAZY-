@@ -65,17 +65,17 @@ st.markdown(
     }
     .stButton>button:hover { background-color: #3451c1; }
     .status-bar {
-        background-color: #595656; border-radius: 6px;
+        background-color: #4a6cf7; border-radius: 6px;
         padding: 0.5em; margin-top: 20px; font-size: 0.9em;
     }
     .log-box {
-        background-color: #595656; border-radius: 6px;
+        background-color: #4a6cf7; border-radius: 6px;
         padding: 0.8em; margin-top: 10px;
         height: 120px; overflow-y: auto; font-size: 0.85em;
         border: 1px solid #dee2e6;
     }
     .download-box {
-        background-color: #595656;
+        background-color: #4a6cf7;
         border-radius: 6px;
         padding: 0.8em;
         margin-top: 10px;
