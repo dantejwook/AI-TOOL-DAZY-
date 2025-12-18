@@ -56,7 +56,7 @@ if not st.session_state.authenticated:
         """
         <style>
         .lock-box {
-            max-width: 420px;
+            max-width: 300px;
             margin: 140px auto;
             padding: 2.2rem;
             background: white;
