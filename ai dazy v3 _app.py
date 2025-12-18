@@ -290,13 +290,12 @@ with left_col:
         type=["md", "pdf", "txt"],
         key=f"uploader_{st.session_state.uploader_key}",
     )
+    if st.button("Upload File Reset", use_container_width=True):
+        st.session_state.uploader_key += 1
+        st.rerun()
     # ✅ 반드시 여기 안에서
     col2, col3 = st.columns([1, 1, 1], gap="small")
-    
-        if st.button("Upload File Reset", use_container_width=True):
-            st.session_state.uploader_key += 1
-            st.rerun()
-
+   
     with col2:
         if st.button("Download Reset", use_container_width=True):
             reset_output()
