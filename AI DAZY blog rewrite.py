@@ -1,8 +1,9 @@
-# AI DAZY v2512190245_1.0
+# AI DAZY v2512190245_1.1
 
 import streamlit as st
 import zipfile
 import os
+import openai
 import json
 import hashlib
 import re
@@ -11,7 +12,6 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
-from openai import OpenAI
 
 # ============================
 # 🔧 기존 설정값 (유지)
@@ -101,7 +101,8 @@ if "api_key" not in st.session_state:
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            
+            openai.Model.list()
+
             TOKEN_STORE[token] = {
                 "api_key": api_key_input,
                 "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
@@ -260,15 +261,13 @@ SEO 최적화된 한국어 블로그 글을 작성하세요.
 - 마크다운
 """
 
-    client = OpenAI(api_key=st.session_state.api_key)
-
-    r = client.responses.create(
-        model="gpt-5-nano",
-        input=prompt + drafts,
+    r = openai.ChatCompletion.create(
+        model="gpt-4-mini",
+        messages=[{"role": "user", "content": prompt + drafts}],
+        temperature=0.4,
     )
+    return r["choices"][0]["message"]["content"]
 
-    return r.output_text
-    
 # ----------------------------
 # 🚀 메인 처리 (유지)
 # ----------------------------
