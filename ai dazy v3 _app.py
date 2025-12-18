@@ -190,7 +190,7 @@ st.markdown(
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
-    if st.button("🔑 API Key 변경"):
+    if st.button("🔑 API Key 변경", use_container_width=True):
         st.session_state.pop("api_key", None)
         st.rerun()
 
