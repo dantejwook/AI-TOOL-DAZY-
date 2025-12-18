@@ -182,6 +182,11 @@ st.markdown(
 # ----------------------------
 # 🧭 사이드바
 # ----------------------------
+
+if st.sidebar.button("🔑 API Key 변경"):
+    st.session_state.pop("api_key", None)
+    st.rerun()
+
 st.sidebar.title("✂️ F5 : Reset")
 
 # ----------------------------
