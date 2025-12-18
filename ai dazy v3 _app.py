@@ -195,37 +195,25 @@ with left_col:
 with right_col:
     st.subheader("📦 ZIP 다운로드")
 
-    # ⭐ container로 DOM 묶기
     with st.container():
         st.markdown(
-            """
-            <div class="download-box">
-                <div id="zip-inner" style="
-                    height: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                ">
-            """,
+            '<div class="download-box">',
             unsafe_allow_html=True,
         )
 
-        # ⭐ 이 placeholder는 이제 진짜 박스 안
         zip_placeholder = st.empty()
 
         st.markdown(
-            """
-                </div>
-            </div>
-            """,
+            '</div>',
             unsafe_allow_html=True,
         )
 
-    # ⭐ 초기 상태 (박스 안 중앙)
+    # 초기 상태 (항상 보임)
     zip_placeholder.markdown(
         """
-        <div style="color:#9aa0a6; font-size:0.9em;">
-            ⏳ 문서 정리 후 ZIP 파일이 준비됩니다
+        <div style="text-align:center;">
+            ⏳ 문서 정리 후<br/>
+            ZIP 파일이 준비됩니다
         </div>
         """,
         unsafe_allow_html=True,
