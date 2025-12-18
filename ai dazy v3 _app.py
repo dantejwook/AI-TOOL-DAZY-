@@ -1,36 +1,16 @@
-# AI DAZY v2512190212_1.0
+# AI DAZY v2512190212_1.1 (API Token Session Enabled)
 
 import streamlit as st
-import zipfile
 import os
-from pathlib import Path
 import openai
-from hdbscan import HDBSCAN
-import json
-import hashlib
-import re
-import shutil
-
-# ⭐ 추가: 병렬 처리용
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import secrets
+from datetime import datetime, timedelta
 
 # ============================
-# 🔧 change log
+# 🔐 Token Store (Server Memory)
 # ============================
-# 1. 캐시 초기화 적용 버전
-# 2. 다시 시작 버튼 제거
-# 3. 대용량 처리 가능
-# 4. 문서 (.md, .pdf, .txt) 지원 가능
-# 5. API 인증, 비밀번호 입력 기능 도입
-
-# ============================
-# 🔧 재분해 설정
-# ============================
-MAX_FILES_PER_CLUSTER = 25
-MAX_RECURSION_DEPTH = 2
-AUTO_SPLIT_NOTICE = (
-    "⚠️ 이 폴더는 파일 수 제한(25개)으로 인해 자동 분해되었습니다.\n\n"
-)
+TOKEN_STORE = {}
+TOKEN_EXPIRE_HOURS = 3
 
 # ----------------------------
 # 🌈 기본 페이지 설정
@@ -42,50 +22,34 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password + Token Landing Gate (FIXED)
+# 🔒 Password + Token Gate
 # ============================
-import secrets
-
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
 params = st.experimental_get_query_params()
-if "auth" in params:
-    st.session_state.authenticated = True
+token = params.get("auth", [None])[0]
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+# 토큰 있으면 인증된 것으로 간주
+if token:
+    st.session_state.authenticated = True
+
+# 비인증 상태 → 비밀번호 입력
 if not st.session_state.authenticated:
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    col = st.columns([1, 2, 1])[1]
 
-    # 🔹 세로 중앙 여백
-    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
-
-    # 🔹 중앙 컨테이너
-    center_col = st.columns([1, 2, 1])[1]
-
-    with center_col:
+    with col:
         st.markdown(
             """
-            <style>
-            .lock-box {
-                padding: 2.2rem;
-                background: #444;
-                border-radius: 16px;
-                box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-                text-align: center;
-                color: #f5f2f2;
-            }
-            input[type="password"] {
-                text-align: center;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            """
-            <div class="lock-box">
+            <div style="
+                background:#444;
+                padding:2rem;
+                border-radius:16px;
+                text-align:center;
+                color:white;">
                 <h2>🔒 Access Password</h2>
                 <p>이 앱은 제한된 사용자만 접근할 수 있습니다.</p>
             </div>
@@ -93,18 +57,13 @@ if not st.session_state.authenticated:
             unsafe_allow_html=True,
         )
 
-        password_input = st.text_input(
-            "Password",
-            type="password",
-            placeholder="비밀번호 입력",
-            label_visibility="collapsed",
-        )
+        pw = st.text_input("Password", type="password", label_visibility="collapsed")
 
-        if password_input:
-            if password_input == APP_PASSWORD:
-                token = secrets.token_hex(16)
+        if pw:
+            if pw == APP_PASSWORD:
+                new_token = secrets.token_hex(16)
+                st.experimental_set_query_params(auth=new_token)
                 st.session_state.authenticated = True
-                st.experimental_set_query_params(auth=token)
                 st.success("접근 허용")
                 st.rerun()
             else:
@@ -113,10 +72,23 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ============================
-# 🔑 API Key Input (Session Memory)
+# 🔄 Restore API Session from Token
+# ============================
+if token and token in TOKEN_STORE:
+    record = TOKEN_STORE[token]
+    if datetime.utcnow() < record["expires_at"]:
+        openai.api_key = record["api_key"]
+        st.session_state.api_key = record["api_key"]
+    else:
+        TOKEN_STORE.pop(token, None)
+        st.experimental_set_query_params()
+        st.warning("⏰ API 세션이 만료되었습니다. 다시 로그인하세요.")
+        st.stop()
+
+# ============================
+# 🔑 API Key Input (First Time)
 # ============================
 if "api_key" not in st.session_state:
-
     st.markdown("### 🔑 OpenAI API Key")
 
     api_key_input = st.text_input(
@@ -129,7 +101,13 @@ if "api_key" not in st.session_state:
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            openai.Model.list()  # ✅ 키 유효성 검사
+            openai.Model.list()  # 유효성 검사
+
+            TOKEN_STORE[token] = {
+                "api_key": api_key_input,
+                "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
+            }
+
             st.session_state.api_key = api_key_input
             st.success("API Key 인증 완료")
             st.rerun()
@@ -137,6 +115,13 @@ if "api_key" not in st.session_state:
             st.error("❌ 유효하지 않은 API Key입니다.")
 
     st.stop()
+
+# ============================
+# ✅ API Session Active
+# ============================
+openai.api_key = st.session_state.api_key
+
+st.success("✅ 로그인 유지 중 (API 세션 활성화)")
 
 # ----------------------------
 # 🎨 스타일
