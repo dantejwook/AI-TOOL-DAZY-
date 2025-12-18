@@ -81,7 +81,7 @@ st.markdown(
 # ----------------------------
 # 🧭 사이드바
 # ----------------------------
-st.sidebar.markdown("✂️ F5 : 초기화")
+st.sidebar.tittle("✂️ F5 : 초기화")
 st.sidebar.markdown(
     """
 - ⚙️ 다시 시작하시려면 
@@ -104,8 +104,7 @@ if st.sidebar.button("🗑️ 결과 폴더 초기화"):
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 💡 사용 팁")
+st.sidebar.title("💡 사용 팁")
 st.sidebar.markdown(
     """
 - ⏳ 업로드 하면 자동으로 시작됩니다.
