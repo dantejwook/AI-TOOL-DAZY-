@@ -338,7 +338,7 @@ if uploaded_files:
         drafts_text += f"\n\n---\n\n{f.getvalue().decode('utf-8')}"
 
     # ① 병합
-    merged = merge_drafts(drafts_text, keyword)
+    merged = merge_drafts(drafts_text)
     progress.progress(30)
     log("초안 병합 완료")
 
