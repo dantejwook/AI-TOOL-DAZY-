@@ -128,7 +128,7 @@ if "api_key" not in st.session_state:
 # ============================
 openai.api_key = st.session_state.api_key
 
-st.success("✅ 로그인")
+st.success("✅ API 인증성공 ")
 
 # ----------------------------
 # 🎨 스타일
