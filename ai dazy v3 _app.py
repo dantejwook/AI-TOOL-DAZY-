@@ -497,7 +497,8 @@ if uploaded_files:
         file_name="result_documents.zip",
         mime="application/zip",
         use_container_width=True,
-    )
+        key="zip_download_button",
+     )
 
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
