@@ -195,15 +195,28 @@ with left_col:
 with right_col:
     st.subheader("📦 ZIP 다운로드")
 
+    # ① 다운로드 박스 외형 (항상 보임)
     st.markdown(
         '<div class="download-box">',
         unsafe_allow_html=True,
     )
 
-    zip_box = st.empty()   # ⭐ 항상 존재하는 자리
+    # ② ⭐ ZIP 영역 placeholder (자리 고정)
+    zip_placeholder = st.empty()
 
+    # ③ 박스 닫기
     st.markdown(
         '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ④ ⭐ 처리 전 상태
+    zip_placeholder.markdown(
+        """
+        <div style="color:#9aa0a6; text-align:center; margin-top:40px;">
+            ⏳ 문서 정리 후 ZIP 파일이 준비됩니다
+        </div>
+        """,
         unsafe_allow_html=True,
     )
     
