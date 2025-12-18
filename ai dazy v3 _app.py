@@ -168,9 +168,9 @@ left_col, right_col = st.columns([1, 1])
 with left_col:
     st.subheader("📤 파일 업로드")
     uploaded_files = st.file_uploader(
-        "문서를 업로드하세요 (.md, .pdf, .txt)",
+        "문서를 업로드하세요 (.md, .pdf, .txt, .zip, .word, .ppt, .xls)",
         accept_multiple_files=True,
-        type=["md", "pdf", "txt"],
+        type=["md", "pdf", "txt", "zip", "word", "ppt", "xls"],
     )
 
 with right_col:
