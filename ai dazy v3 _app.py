@@ -303,6 +303,11 @@ with left_col:
             reset_output()
             st.rerun()
 
+    with col3:
+        if st.button("Cache Reset", use_container_width=True):
+            reset_cache()
+            st.toast("✅ Cache Reset is complete.")
+            st.rerun()
 
 
 with right_col:
