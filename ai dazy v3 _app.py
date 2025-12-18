@@ -198,13 +198,7 @@ with right_col:
             use_container_width=True,
             key="zip_ready",
         )
-    else:
-        st.button(
-            "[ Download ]",
-            disabled=True,
-            use_container_width=True,
-            key="zip_disabled",
-        )
+    # else: 아무것도 출력하지 않음 (빈칸)
 
         
 # ----------------------------
