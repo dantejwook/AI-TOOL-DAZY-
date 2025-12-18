@@ -291,7 +291,7 @@ with left_col:
         key=f"uploader_{st.session_state.uploader_key}",
     )
     # ✅ 반드시 여기 안에서
-    col1, col2 = st.columns([1, 1], gap="small")
+    col1, col2, col3 = st.columns([1, 1, 1], gap="small")
 
     with col1:
         if st.button("Upload File Reset", use_container_width=True):
@@ -306,7 +306,6 @@ with left_col:
     with col3:
         if st.button("Cache Reset", use_container_width=True):
             reset_cache()
-            st.toast("✅ Cache Reset is complete.")
             st.rerun()
 
 
