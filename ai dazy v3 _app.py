@@ -69,8 +69,8 @@ st.markdown(
         padding: 0.5em; margin-top: 20px; font-size: 0.9em;
     }
     .log-box {
-        background-color: #262A32; border-radius: 6px;
-        padding: 0.8em; margin-top: 10px;
+        background-color: #eaeaea; border-radius: 6px;
+        padding: 0em; margin-top: -6px;
         height: 120px; overflow-y: auto; font-size: 0.85em;
         border: none;
     }
