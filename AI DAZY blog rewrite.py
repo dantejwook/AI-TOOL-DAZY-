@@ -235,6 +235,36 @@ def log(msg):
         unsafe_allow_html=True,
     )
 
+# ----------------------------
+# 🧩 JSON 안전 파서 (필수)
+# ----------------------------
+def safe_json_loads(text: str):
+    """
+    모델이 설명/코드펜스/앞뒤 잡문을 섞어 출력해도
+    JSON 객체 또는 배열만 추출해서 파싱한다
+    """
+    if not text:
+        raise ValueError("Empty response")
+
+    t = text.strip()
+
+    # ```json ... ``` 코드펜스 제거
+    t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s*```$", "", t)
+
+    # JSON 배열 우선 추출
+    m = re.search(r"\[[\s\S]*\]", t)
+    if m:
+        return json.loads(m.group(0))
+
+    # 없으면 JSON 객체 추출
+    m = re.search(r"\{[\s\S]*\}", t)
+    if m:
+        return json.loads(m.group(0))
+
+    # 최후 수단
+    return json.loads(t)
+
 # ==================================================
 # 🧠 3-STEP BLOG REWRITE LOGIC (복구 완료)
 # ==================================================
