@@ -178,7 +178,7 @@ st.subheader("AI auto file analyzer")
 with left_col:
     st.subheader("📤 파일 업로드")
     uploaded_files = st.file_uploader(
-        "문서를 업로드하세요 (.md, .pdf, .txt)",
+        "📁 문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
     )
