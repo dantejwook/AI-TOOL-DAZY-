@@ -221,8 +221,6 @@ def reset_output():
 st.sidebar.markdown(
     """
 
-- ⚙️ 다시 시작하시려면 
--     "Cache Reset > Download Reset > F5 순서대로 눌러주세요."
 """
 )
 
@@ -244,6 +242,13 @@ with col2:
 
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+
+if st.sidebar.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+    st.session_state.uploader_key += 1
+    st.toast("업로드된 파일이 모두 제거되었습니다.")
+    st.rerun()
+
 
 
 st.sidebar.markdown("### 💡 사용 팁")
