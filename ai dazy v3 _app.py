@@ -130,7 +130,7 @@ st.sidebar.markdown(
     """
 
 - ⚙️ 다시 시작하시려면 
--     Cache Reset > Download Reset > F5 순서대로 눌러주세요.
+-     "Cache Reset > Download Reset > F5 순서대로 눌러주세요."
 """
 )
 
