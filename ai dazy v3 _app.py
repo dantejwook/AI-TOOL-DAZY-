@@ -112,12 +112,11 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
-# ============================
-# ✅ API Session Active
-# ============================
-openai.api_key = st.session_state.api_key
+if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+    st.session_state.uploader_key += 1
+    st.toast("업로드된 파일이 모두 제거되었습니다.")
+    st.rerun()
 
-st.success("✅ API 인증성공 ")
 
 # ============================
 # 📁 File Uploader State (초기 1회)
@@ -156,6 +155,14 @@ st.markdown(
 # ----------------------------
 # 🧭 사이드바
 # ----------------------------
+
+# ============================
+# ✅ API Session Active (Sidebar)
+# ============================
+openai.api_key = st.session_state.api_key
+
+with st.sidebar:
+    st.success("✅ API 인증 성공")
 
 # ============================
 # 🔒 Logout Button
@@ -231,12 +238,6 @@ st.sidebar.markdown(
 )
 
 # ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
-
-if st.sidebar.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
-    st.session_state.uploader_key += 1
-    st.toast("업로드된 파일이 모두 제거되었습니다.")
-    st.rerun()
-
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
