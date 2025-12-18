@@ -80,7 +80,7 @@ st.markdown(
 # ----------------------------
 # 🧭 사이드바
 # ----------------------------
-st.sidebar.title("✂️ F5 : 초기화")
+st.sidebar.title("✂️ F5 : Reset")
 
 # ----------------------------
 # 🧠 캐시
@@ -148,8 +148,6 @@ def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 
-
-st.sidebar.markdown("---")
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
     """
