@@ -283,8 +283,7 @@ with left_col:
         key=f"uploader_{st.session_state.uploader_key}",
     )
 
-col1, col2 = st.button.columns([1, 1], gap="small")
-
+col1, col2 = st.columns([1, 1], gap="small")
 with col1:
     if st.button("업로드 파일 전체 비우기", use_container_width=True):
         st.session_state.uploader_key += 1
