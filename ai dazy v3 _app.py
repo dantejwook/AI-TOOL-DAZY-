@@ -196,21 +196,17 @@ with right_col:
     st.subheader("📦 ZIP 다운로드")
 
     st.markdown(
-        """
-        <div class="download-box">
-        """,
+        '<div class="download-box">',
         unsafe_allow_html=True,
     )
 
-    zip_placeholder = st.empty()
+    zip_box = st.empty()   # ⭐ 항상 존재하는 자리
 
     st.markdown(
-        """
-        </div>
-        """,
+        '</div>',
         unsafe_allow_html=True,
     )
-
+    
 # ----------------------------
 # ⚙️ 상태 / 로그
 # ----------------------------
