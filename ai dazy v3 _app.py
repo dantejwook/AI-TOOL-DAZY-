@@ -119,6 +119,12 @@ openai.api_key = st.session_state.api_key
 
 st.success("✅ API 인증성공 ")
 
+# ============================
+# 📁 File Uploader State (초기 1회)
+# ============================
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
+
 # ----------------------------
 # 🎨 스타일
 # ----------------------------
@@ -277,6 +283,7 @@ with left_col:
         "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
+        key=f"uploader_{st.session_state.uploader_key}",
     )
 
 with right_col:
