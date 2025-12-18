@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 1.캐시 초기화 적용 버젼
 # 2.다시시작 버튼 제거
 # 3.대용량 처리 가능
+# 4.사이드바에 사용법 추가가
 
 # ============================
 
@@ -81,8 +82,27 @@ st.markdown(
 # 🧭 사이드바
 # ----------------------------
 st.sidebar.title("✂️ F5 : 초기화")
+st.sidebar.markdown(
+- ⚙️ 다시 시작하시려면 
+_  ㄴ캐시 초기화 > 다운로드 초기화 > F5 순서대로 눌러주세요.
+-     ㄴ warning : 중복 다운로드 우려가 있습니다.
+)
+
 st.sidebar.title("⚙️ 설정")
 lang = st.sidebar.selectbox("🌐 언어 선택", ["한국어", "English"])
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 💡 사용 팁")
+st.sidebar.markdown(
+    """
+- ⏳ 업로드 하면 자동으로 시작됩니다.
+- 📂 **여러 문서를 한 번에 업로드**할 수 있습니다.
+- 🧠 문서는 **AI가 자동으로 주제별 분류**합니다.
+- 📁 폴더 수가 많으면 **자동으로 하위 폴더로 분해**됩니다.
+- ⏳ 문서 수가 많을수록 처리 시간이 늘어납니다.
+- 📦 완료 후 **ZIP 파일로 한 번에 다운로드**할 수 있습니다.
+"""
+)
 
 # ----------------------------
 # 🧠 캐시
