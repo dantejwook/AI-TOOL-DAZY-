@@ -397,7 +397,10 @@ if uploaded_files:
         done += 1
         pct = int(done / total * 100)
         progress.progress(pct)
-        progress_text.markdown(f"<div class='status-bar'>[{pct}%] ({done} / {total})</div>",
+        progress_text.markdown(
+            f"<div class='status-bar'>[{pct}%] ({done} / {total})</div>",
+            unsafe_allow_html=True
+        )
         log(f"{main_group} 처리 완료")
 
     zip_path = Path("result_documents.zip")
