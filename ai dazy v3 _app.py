@@ -288,7 +288,7 @@ if uploaded_files:
         done += 1
         pct = int(done / total * 100)
         progress_placeholder.progress(pct)
-        progress_text.markdown(f"<div class='status-bar'>[{pct}%]</div>", unsafe_allow_html=True)
+        progress_text.markdown(f"<div class='status-bar'>[{pct}%] ({done} / {total})</div>", unsafe_allow_html=True)
 
     zip_path = Path("result_documents.zip")
     with zipfile.ZipFile(zip_path, "w") as z:
