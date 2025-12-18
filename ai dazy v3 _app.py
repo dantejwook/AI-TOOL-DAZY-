@@ -129,19 +129,19 @@ st.sidebar.markdown(
     """
 
 - ⚙️ 다시 시작하시려면 
--     캐시 초기화 > 다운로드 초기화 > F5 순서대로 눌러주세요.
+-     Cache Reset > Download Reset > F5 순서대로 눌러주세요.
 """
 )
 
 # ▶ 사이드바 버튼 (분리)
-if st.sidebar.button("🧹 캐시 초기화"):
+if st.sidebar.button("🧹 Cache Reset"):
     reset_cache()
-    st.sidebar.success("✅ 캐시가 초기화되었습니다.")
+    st.sidebar.success("✅ Cache Reset is complete.")
     st.rerun()
 
-if st.sidebar.button("🗑️ 결과 폴더 초기화"):
+if st.sidebar.button("🗑️ Download Reset"):
     reset_output()
-    st.sidebar.success("✅ 결과 폴더가 초기화되었습니다.")
+    st.sidebar.success("✅ Download Reset is complete.")
     st.rerun()
 
 def h(t: str):
