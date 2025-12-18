@@ -183,7 +183,22 @@ with left_col:
 
 with right_col:
     st.subheader("📦 ZIP 다운로드")
+
+    st.markdown(
+        """
+        <div class="download-box">
+        """,
+        unsafe_allow_html=True,
+    )
+
     zip_placeholder = st.empty()
+
+    st.markdown(
+        """
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ----------------------------
 # ⚙️ 상태 / 로그
