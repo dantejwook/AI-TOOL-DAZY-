@@ -92,7 +92,7 @@ if "api_key" not in st.session_state:
     )
     st.caption("해당앱은 chat gpt / open api를 사용합니다. ")
     st.caption("open ai 에서 발급한 api키를 사용해주세요.")
-    st.caption("https://openai.com/ko-KR/api/")
+    st.caption("api key 발급 받기 : [ https://openai.com/ko-KR/api/ ]")
     
     if api_key_input:
         try:
