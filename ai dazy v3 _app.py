@@ -161,7 +161,7 @@ st.markdown(
 openai.api_key = st.session_state.api_key
 
 with st.sidebar:
-    st.success("✅ API 인증 성공")
+    st.success("API 인증 성공")
 
 # ============================
 # 🔒 Logout Button
@@ -170,12 +170,12 @@ st.sidebar.title("⚙️ Setting")
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
-    if st.button("🔑 API Key 변경", use_container_width=True):
+    if st.button("API Key 변경", use_container_width=True):
         st.session_state.pop("api_key", None)
         st.rerun()
 
 with col2:
-    if st.button("🔒 로그아웃", use_container_width=True):
+    if st.button("로그아웃", use_container_width=True):
     # 인증 상태 제거
         st.session_state.pop("authenticated", None)
         st.session_state.pop("api_key", None)
@@ -240,13 +240,13 @@ st.sidebar.markdown(
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
 with col1:
-    if st.button("🧹 Cache Reset", use_container_width=True):
+    if st.button("Cache Reset", use_container_width=True):
         reset_cache()
         st.toast("✅ Cache Reset is complete.")
         st.rerun()
 
 with col2:
-    if st.button("🗑️ Download Reset", use_container_width=True):
+    if st.button("Download Reset", use_container_width=True):
         reset_output()
         st.toast("✅ Download Reset is complete.")
         st.rerun()
@@ -283,7 +283,7 @@ with left_col:
         key=f"uploader_{st.session_state.uploader_key}",
     )
     
-    if st.button("🗑️ 업로드 파일 전체 비우기", use_container_width=True):
+    if st.button("업로드 파일 전체 비우기", use_container_width=True):
         st.session_state.uploader_key += 1
         st.toast("업로드된 파일이 모두 제거되었습니다.")
         st.rerun()
