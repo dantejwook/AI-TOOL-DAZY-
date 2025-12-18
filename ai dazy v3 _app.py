@@ -1,4 +1,4 @@
-#last, rollbacK 용
+#last, rollbac V999
 
 import streamlit as st
 import zipfile
@@ -175,15 +175,16 @@ left_col, right_col = st.columns([1, 1])
 st.subheader("AI auto file analyzer")
 
 with left_col:
-    st.subheader("📤 파일 업로드")
+    st.subheader("File upload")
     uploaded_files = st.file_uploader(
-        "문서를 업로드하세요 (.md, .pdf, .txt)",
+        "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
     )
 
 with right_col:
-    st.subheader("📦 ZIP 다운로드")
+    st.subheader("ZIP Download")
+    st.caption(" 📁문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
     st.markdown(
         """
@@ -488,7 +489,7 @@ if uploaded_files:
                 z.write(p, arcname=os.path.relpath(p, output_dir))
  
     zip_placeholder.download_button(
-        "📥 정리된 ZIP 파일 다운로드",
+        "[ DownLoad ]",
         open(zip_path, "rb"),
         file_name=zip_path.name,
         mime="application/zip",
