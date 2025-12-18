@@ -42,90 +42,77 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password + Token Landing Gate
+# 🔒 Password + Token Landing Gate (FIXED)
 # ============================
 
 import secrets
 
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
-# URL 토큰 확인
 params = st.experimental_get_query_params()
-has_token = "auth" in params
+if "auth" in params:
+    st.session_state.authenticated = True
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# 토큰 있으면 인증 유지
-if has_token:
-    st.session_state.authenticated = True
-
-# 인증 안 된 경우 → 랜딩
 if not st.session_state.authenticated:
 
-    st.markdown(
-        """
-        <style>
-        .fullscreen {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;      /* ⬆⬇ 세로 중앙 */
-            justify-content: center;  /* ⬅➡ 가로 중앙 */
-            background-color: #2f2f2f;
-            z-index: 9999;
-        }
-        .lock-box {
-            width: 420px;
-            padding: 2.2rem;
-            background: #444;
-            border-radius: 16px;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-            text-align: center;
-            color: #f5f2f2;
-        }
-        input[type="password"] {
-            text-align: center;
-            max-width: 260px;
-            margin: 0 auto;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # 🔹 세로 중앙을 위한 빈 공간
+    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
 
-    st.markdown(
-        """
-        <div class="fullscreen">
+    # 🔹 중앙 컨테이너
+    center_col = st.columns([1, 2, 1])[1]
+
+    with center_col:
+
+        st.markdown(
+            """
+            <style>
+            .lock-box {
+                padding: 2.2rem;
+                background: #444;
+                border-radius: 16px;
+                box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+                text-align: center;
+                color: #f5f2f2;
+            }
+            input[type="password"] {
+                text-align: center;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            """
             <div class="lock-box">
                 <h2>🔒 Access Password</h2>
-                <p>
-                    이 앱은 제한된 사용자만 접근할 수 있습니다.
-                </p>
-        """,
-        unsafe_allow_html=True,
-    )
+                <p>이 앱은 제한된 사용자만 접근할 수 있습니다.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    password_input = st.text_input(
-        "Password",
-        type="password",
-        placeholder="비밀번호 입력",
-        label_visibility="collapsed",
-    )
+        password_input = st.text_input(
+            "Password",
+            type="password",
+            placeholder="비밀번호 입력",
+            label_visibility="collapsed",
+        )
 
-    if password_input:
-        if password_input == APP_PASSWORD:
-            token = secrets.token_hex(16)
-            st.session_state.authenticated = True
-            st.experimental_set_query_params(auth=token)
-            st.success("접근 허용")
-            st.rerun()
-        else:
-            st.error("비밀번호가 올바르지 않습니다.")
+        if password_input:
+            if password_input == APP_PASSWORD:
+                token = secrets.token_hex(16)
+                st.session_state.authenticated = True
+                st.experimental_set_query_params(auth=token)
+                st.success("접근 허용")
+                st.rerun()
+            else:
+                st.error("비밀번호가 올바르지 않습니다.")
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
     st.stop()
-    
 # ----------------------------
 # 🔐 OpenAI API 키 (사용자 입력 방식)
 # ----------------------------
