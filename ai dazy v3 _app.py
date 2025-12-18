@@ -42,27 +42,49 @@ st.set_page_config(
 )
 
 # ============================
-# 🔒 Password Landing Gate
+# 🔒 Password + Token Gate
 # ============================
 
 APP_PASSWORD = st.secrets.get("APP_PASSWORD") or os.getenv("APP_PASSWORD")
 
+# URL 토큰 확인
+params = st.experimental_get_query_params()
+has_token = "auth" in params
+
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+# 토큰이 있으면 바로 인증
+if has_token:
+    st.session_state.authenticated = True
+
+# 인증 안 된 경우 → 비밀번호 랜딩
 if not st.session_state.authenticated:
 
     st.markdown(
         """
         <style>
+        .fullscreen-center {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fc;
+            z-index: 9999;
+        }
         .lock-box {
-            max-width: 420px;
-            margin: 140px auto;
+            width: 420px;
             padding: 2.2rem;
             background: grey;
             border-radius: 16px;
             box-shadow: 0 12px 32px rgba(0,0,0,0.08);
             text-align: center;
+        }
+        input[type="password"] {
+            text-align: center;
+            max-width: 280px;
+            margin: 0 auto;
         }
         </style>
         """,
@@ -71,11 +93,12 @@ if not st.session_state.authenticated:
 
     st.markdown(
         """
-        <div class="lock-box">
-            <h2>🔒 Access Password</h2>
-            <p style="color:#f5f2f2;">
-                이 앱은 제한된 사용자만 접근할 수 있습니다.
-            </p>
+        <div class="fullscreen-center">
+            <div class="lock-box">
+                <h2>🔒 Access Password</h2>
+                <p style="color:#f5f2f2;">
+                    비밀번호를 입력하면 접근이 허용됩니다.
+                </p>
         """,
         unsafe_allow_html=True,
     )
@@ -89,15 +112,17 @@ if not st.session_state.authenticated:
 
     if password_input:
         if password_input == APP_PASSWORD:
+            token = secrets.token_hex(16)
             st.session_state.authenticated = True
+            st.experimental_set_query_params(auth=token)
             st.success("접근 허용")
             st.rerun()
         else:
             st.error("비밀번호가 올바르지 않습니다.")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
     st.stop()
-
+    
 # ----------------------------
 # 🔐 OpenAI API 키 (사용자 입력 방식)
 # ----------------------------
