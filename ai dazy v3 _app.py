@@ -184,21 +184,17 @@ with left_col:
 
 with right_col:
     st.subheader("ZIP Download")
-    st.caption(" 📁문서 정리 후 다운로드 버튼이 활성화 됩니다.")
+    st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
     st.markdown(
-        """
-        <div class="download-box">
-        """,
+        '<div class="download-box">',
         unsafe_allow_html=True,
     )
 
     zip_placeholder = st.empty()
 
     st.markdown(
-        """
-        </div>
-        """,
+        '</div>',
         unsafe_allow_html=True,
     )
 
