@@ -90,8 +90,8 @@ if "api_key" not in st.session_state:
         placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx",
         label_visibility="collapsed",
     )
-    st.caption("해당앱은 chat gpt / open api를 사용합니다. ")
-    st.caption("open ai 에서 발급한 api키를 사용해주세요.")
+    st.caption("해당앱은 chat gpt / openai를 사용합니다. ")
+    st.caption("openai 에서 발급한 api key 를 사용해주세요.")
     st.caption("api key 발급 받기 : [ https://openai.com/ko-KR/api/ ]")
     
     if api_key_input:
