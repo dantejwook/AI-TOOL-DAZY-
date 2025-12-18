@@ -79,20 +79,6 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ============================
-# 🔄 Restore API Session from Token
-# ============================
-if token and token in TOKEN_STORE:
-    record = TOKEN_STORE[token]
-    if datetime.utcnow() < record["expires_at"]:
-        openai.api_key = record["api_key"]
-        st.session_state.api_key = record["api_key"]
-    else:
-        TOKEN_STORE.pop(token, None)
-        st.experimental_set_query_params()
-        st.warning("⏰ API 세션이 만료되었습니다. 다시 로그인하세요.")
-        st.stop()
-
-# ============================
 # 🔑 API Key Input (First Time)
 # ============================
 if "api_key" not in st.session_state:
