@@ -176,42 +176,34 @@ left_col, right_col = st.columns([1, 1])
 st.subheader("AI auto file analyzer")
 
 with left_col:
-    st.markdown('<div class="center-all">', unsafe_allow_html=True)
-
-    st.subheader("📤 파일 업로드")
-    st.caption("📂 문서를 업로드하세요 (.md, .pdf, .txt)")
-
+    st.subheader("⬆️파일 업로드⬆️")
     uploaded_files = st.file_uploader(
-        " ",
+        "📁 문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
-        label_visibility="collapsed",
     )
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
 with right_col:
-    st.subheader("📦 ZIP Download")
-    st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
+    st.subheader("⬇️ZIP Download⬇️")
 
-    if Path("result_documents.zip").exists():
-        st.markdown('<div class="left-download">', unsafe_allow_html=True)
-        
+    # 업로드 쪽과 동일한 위치의 설명
+    st.caption("📁문서 정리 후 다운로드 버튼이 활성화 됩니다.")
+
+    # 처리 전에는 버튼 비활성 느낌만 주기
+    if not Path("result_documents.zip").exists():
+        st.button(
+            "⬇️Download⬇️",
+            disabled=True,
+            use_container_width=True,
+        )
+    else:
         st.download_button(
-            "📦Download📦",
+            "⬇️Download⬇️",
             open("result_documents.zip", "rb"),
             file_name="result_documents.zip",
             mime="application/zip",
             use_container_width=True,
         )
-    else:
-        st.button(
-            "📦Download📦",
-            disabled=True,
-            use_container_width=True,
-        )
-
-    st.markdown('</div>', unsafe_allow_html=True)
     
 # ----------------------------
 # ⚙️ 상태 / 로그
