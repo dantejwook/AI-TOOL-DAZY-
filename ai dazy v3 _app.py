@@ -194,6 +194,7 @@ with left_col:
 
 with right_col:
     st.subheader("📦 ZIP 다운로드")
+    st.caption("⏳ 문서 정리 후 ZIP 파일이 준비됩니다")
 
     with st.container():
         st.markdown(
@@ -201,23 +202,12 @@ with right_col:
             unsafe_allow_html=True,
         )
 
-        zip_placeholder = st.empty()
+        zip_placeholder = st.empty()  # 나중에 버튼으로 교체
 
         st.markdown(
             '</div>',
             unsafe_allow_html=True,
         )
-
-    # 초기 상태 (항상 보임)
-    zip_placeholder.markdown(
-        """
-        <div style="text-align:center;">
-            ⏳ 문서 정리 후<br/>
-            ZIP 파일이 준비됩니다
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
     
 # ----------------------------
 # ⚙️ 상태 / 로그
