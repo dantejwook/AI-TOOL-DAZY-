@@ -286,6 +286,7 @@ with left_col:
 col1, col2 = st.columns([1, 1], gap="small")
     )
 
+    # ✅ 반드시 여기 안에서
     col1, col2 = st.columns([1, 1], gap="small")
 
     with col1:
