@@ -1,4 +1,4 @@
-#last, rollbacK 용 dd
+#last, rollbacK 용
 
 import streamlit as st
 import zipfile
@@ -65,16 +65,25 @@ st.markdown(
     }
     .stButton>button:hover { background-color: #3451c1; }
     .status-bar {
-        background-color: #262A32; border-radius: 6px;
+        background-color: #4a6cf7; border-radius: 6px;
         padding: 0.5em; margin-top: 20px; font-size: 0.9em;
     }
     .log-box {
-        background-color: #262A32; border-radius: 6px;
+        background-color: #4a6cf7; border-radius: 6px;
         padding: 0.8em; margin-top: 10px;
         height: 120px; overflow-y: auto; font-size: 0.85em;
-        border: none;
+        border: 1px solid #dee2e6;
     }
-    
+    .download-box {
+        background-color: #4a6cf7;
+        border-radius: 6px;
+        padding: 0.8em;
+        margin-top: 10px;
+        height: 120px;
+        overflow-y: auto;
+        font-size: 0.85em;
+        border: 1px solid #dee2e6;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -176,31 +185,32 @@ left_col, right_col = st.columns([1, 1])
 st.subheader("AI auto file analyzer")
 
 with left_col:
-    st.subheader("File upload")
+    st.subheader("📤 파일 업로드")
     uploaded_files = st.file_uploader(
-        "📁 문서를 업로드하세요 (.md, .pdf, .txt)",
+        "문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
     )
 
 with right_col:
-    st.subheader("ZIP Download")
-    st.caption("⏳ 문서 정리 후 다운로드 버튼이 활성화됩니다.")
+    st.subheader("📦 ZIP 다운로드")
 
-    zip_ready = Path("result_documents.zip").exists()
+    st.markdown(
+        """
+        <div class="download-box">
+        """,
+        unsafe_allow_html=True,
+    )
 
-    if zip_ready:
-        st.download_button(
-            "[ Download ]",
-            open("result_documents.zip", "rb"),
-            file_name="result_documents.zip",
-            mime="application/zip",
-            use_container_width=True,
-            key="zip_ready",
-        )
-    # else: 아무것도 출력하지 않음 (빈칸)
+    zip_placeholder = st.empty()
 
-        
+    st.markdown(
+        """
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # ----------------------------
 # ⚙️ 상태 / 로그
 # ----------------------------
@@ -486,14 +496,18 @@ if uploaded_files:
             for f in files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
+ 
+    zip_placeholder.download_button(
+        "📥 정리된 ZIP 파일 다운로드",
+        open(zip_path, "rb"),
+        file_name=zip_path.name,
+        mime="application/zip",
+    )
 
-    st.session_state.zip_ready = True
-    
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
 
-  
 else:
     progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
