@@ -197,14 +197,8 @@ with right_col:
             use_container_width=True,
         )
     else:
-        st.download_button(
-            "[ Download ]",
-            open("result_documents.zip", "rb"),
-            file_name="result_documents.zip",
-            mime="application/zip",
-            use_container_width=True,
-        )
-    
+
+        
 # ----------------------------
 # ⚙️ 상태 / 로그
 # ----------------------------
