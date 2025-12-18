@@ -141,6 +141,16 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
+# ============================
+# 🔄 Reuse API Key from Session
+# ============================
+
+if "api_key" in st.session_state:
+    openai.api_key = st.session_state.api_key
+else:
+    st.warning("API Key를 먼저 입력하세요.")
+    st.stop()
+
 # ----------------------------
 # 🎨 스타일
 # ----------------------------
