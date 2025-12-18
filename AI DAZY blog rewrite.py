@@ -325,7 +325,7 @@ def generate_blog_body(merged, keyword, title, meta_description):
 # ----------------------------
 # 🚀 메인 처리 (UI 흐름 유지)
 # ----------------------------
-if uploaded_files and keyword:
+if uploaded_files:
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True)
 
