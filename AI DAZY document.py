@@ -120,9 +120,6 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
-
-
-
 # ============================
 # 📁 File Uploader State (초기 1회)
 # ============================
@@ -227,44 +224,12 @@ unsafe_allow_html=True,
 )
 
 
-# ----------------------------
-# 🧭 사이드바
-# ----------------------------
-
 # ============================
-# ✅ API Session Active (Sidebar)
+# 사이드바 설정 부분
 # ============================
-openai.api_key = st.session_state.api_key
-
-with st.sidebar:
-    st.success("API 인증 성공")
-
-# ============================
-# 🔒 Logout Button
-# ============================
-st.sidebar.title("⚙️ Setting")
-col1, col2 = st.sidebar.columns([1, 1], gap="small")
-
-with col1:
-    if st.button("API Key 변경", use_container_width=True):
-        st.session_state.pop("api_key", None)
-        st.rerun()
-
-with col2:
-    if st.button("로그아웃", use_container_width=True):
-    # 인증 상태 제거
-        st.session_state.pop("authenticated", None)
-        st.session_state.pop("api_key", None)
-
-    # URL 토큰 제거
-        st.experimental_set_query_params()
-
-    # 전체 리셋
-        st.rerun()
-
 
 # ----------------------------
-# 🧠 캐시
+# 캐시
 # ----------------------------
 CACHE_DIR = Path(".cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -312,20 +277,40 @@ st.sidebar.markdown(
 """
 )
 
-# ▶ 사이드바 버튼 (캐시, 다운로드 초기화)
-#col1, col2 = st.sidebar.columns([1, 1], gap="small")
+# ============================
+#  사이드바 UI
+# ============================
 
-#with col1:
-#    if st.button("Cache Reset", use_container_width=True):
-#        reset_cache()
-#        st.toast("✅ Cache Reset is complete.")
-#        st.rerun()
+# ----------------------------
+# ✅ API Session Active (Sidebar)
+# ----------------------------
+openai.api_key = st.session_state.api_key
 
-#with col2:
-#    if st.button("Download Reset", use_container_width=True):
-#        reset_output()
-#        st.toast("✅ Download Reset is complete.")
-#        st.rerun()
+with st.sidebar:
+    st.success("API 인증 성공")
+
+# ----------------------------
+# 🔒 Logout Button
+# ----------------------------
+st.sidebar.title("⚙️ Setting")
+col1, col2 = st.sidebar.columns([1, 1], gap="small")
+
+with col1:
+    if st.button("API Key 변경", use_container_width=True):
+        st.session_state.pop("api_key", None)
+        st.rerun()
+
+with col2:
+    if st.button("로그아웃", use_container_width=True):
+    # 인증 상태 제거
+        st.session_state.pop("authenticated", None)
+        st.session_state.pop("api_key", None)
+
+    # URL 토큰 제거
+        st.experimental_set_query_params()
+
+    # 전체 리셋
+        st.rerun()
 
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
