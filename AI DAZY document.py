@@ -327,8 +327,8 @@ st.sidebar.markdown(
 #        st.toast("✅ Download Reset is complete.")
 #        st.rerun()
 
-#def h(t: str):
-#    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
