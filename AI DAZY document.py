@@ -60,11 +60,11 @@ if not st.session_state.authenticated:
         st.markdown(
             """
             <div style="
-                background:#444;
+                background:var(--secondary-background-color);
                 padding:2rem;
                 border-radius:16px;
                 text-align:center;
-                color:white;">
+                color:var(--text-color);">
                 <h2>🔒 Access Password</h2>
                 <p>이 앱은 제한된 사용자만 접근할 수 있습니다.</p>
             </div>
@@ -133,30 +133,56 @@ if "uploader_key" not in st.session_state:
 # 🎨 스타일
 # ----------------------------
 st.markdown(
-    """
-    
-    <style>
-    body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
-    .stButton>button {
-        border-radius: 10px; background-color: #4a6cf7; color: white;
-        border: none; padding: 0.6em 1.2em; font-weight: 600;
-    }
-    .stButton>button:hover { background-color: #3451c1; }
-    .status-bar {
-        background-color: #0e1117; border-radius: 6px;
-        padding: 0.5em; margin-top: 10px; font-size: 0.9em;
-    }
-    .log-box {
-        background-color: #262A32; border-radius: 6px;
-        padding: 0.8em; margin-top: 10px;
-        height: 120px; overflow-y: auto; font-size: 0.85em;
-        border: none;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+"""
+<style>
 
+/* 앱 전체 배경 – 테마 연동 */
+body {
+    background-color: var(--background-color);
+    font-family: 'Pretendard', sans-serif;
+}
+
+/* 버튼 – 기존 디자인 유지 + 테마 친화 */
+.stButton>button {
+    border-radius: 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.6em 1.2em;
+    font-weight: 600;
+}
+.stButton>button:hover {
+    filter: brightness(0.9);
+}
+
+/* 상태바 – 테마 자동 반응 */
+.status-bar {
+    background-color: var(--secondary-background-color);
+    color: var(--text-color);
+    border-radius: 6px;
+    padding: 0.5em;
+    margin-top: 10px;
+    font-size: 0.9em;
+    border-left: 4px solid var(--primary-color);
+}
+
+/* 로그 박스 – 테마 자동 반응 */
+.log-box {
+    background-color: var(--secondary-background-color);
+    color: var(--text-color);
+    border-radius: 6px;
+    padding: 0.8em;
+    margin-top: 10px;
+    height: 120px;
+    overflow-y: auto;
+    font-size: 0.85em;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+</style>
+""",
+unsafe_allow_html=True,
+)
 
 
 # ----------------------------
