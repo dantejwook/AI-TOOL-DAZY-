@@ -145,7 +145,7 @@ body {
 }
 
 /* =========================
-   버튼 스타일 (그림자 포함)
+   버튼 스타일 (그림자 유지)
 ========================= */
 .stButton>button {
     border-radius: 10px;
@@ -155,7 +155,7 @@ body {
     padding: 0.6em 1.2em;
     font-weight: 600;
 
-    /* 기본 그림자 */
+    /* 버튼 전용 그림자 */
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
 
     transition:
@@ -164,21 +164,20 @@ body {
         filter 0.15s ease;
 }
 
-/* Hover – 살짝 떠오르는 느낌 */
 .stButton>button:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
     filter: brightness(0.97);
 }
 
-/* Active – 눌리는 느낌 */
 .stButton>button:active {
     transform: translateY(0);
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
 }
 
 /* =========================
-   상태바 (테마 반응형)
+   상태바 (정보용 카드)
+   ❌ 버튼 윤곽 제거
 ========================= */
 .status-bar {
     background-color: var(--secondary-background-color);
@@ -187,11 +186,14 @@ body {
     padding: 0.5em;
     margin-top: 10px;
     font-size: 0.9em;
-    border-left: 4px solid var(--primary-color);
+
+    /* 버튼처럼 보이게 하는 요소 제거 */
+    box-shadow: none;
+    border: none;
 }
 
 /* =========================
-   로그 박스 (테마 반응형)
+   로그 박스 (카드 유지)
 ========================= */
 .log-box {
     background-color: var(--secondary-background-color);
@@ -206,15 +208,15 @@ body {
 }
 
 /* =========================
-   다크 테마 전용 미세 조정
+   다크 테마 미세 조정
+   (상태바 제외)
 ========================= */
 @media (prefers-color-scheme: dark) {
     .stButton>button {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
     }
 
-    .log-box,
-    .status-bar {
+    .log-box {
         border: 1px solid rgba(255, 255, 255, 0.06);
     }
 }
