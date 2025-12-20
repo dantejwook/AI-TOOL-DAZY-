@@ -205,7 +205,7 @@ body {
     height: 120px;
     overflow-y: auto;
     font-size: 0.85em;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color, rgba(0,0,0,0.12));
 }
 
 /* =========================
@@ -213,12 +213,14 @@ body {
    (상태바 제외)
 ========================= */
 @media (prefers-color-scheme: dark) {
-    .stButton>button {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-    }
-
     .log-box {
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    .log-box {
+        border: 1px solid rgba(0, 0, 0, 0.14);
     }
 }
 
@@ -226,7 +228,6 @@ body {
 """,
 unsafe_allow_html=True,
 )
-
 
 # ============================
 # 사이드바 설정 부분
