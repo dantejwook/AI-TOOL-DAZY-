@@ -136,13 +136,17 @@ st.markdown(
 """
 <style>
 
-/* 앱 전체 배경 – 테마 연동 */
+/* =========================
+   앱 기본 배경 (테마 연동)
+========================= */
 body {
     background-color: var(--background-color);
     font-family: 'Pretendard', sans-serif;
 }
 
-/* 버튼 – 기존 디자인 유지 + 테마 친화 */
+/* =========================
+   버튼 스타일 (그림자 포함)
+========================= */
 .stButton>button {
     border-radius: 10px;
     background-color: var(--primary-color);
@@ -150,12 +154,32 @@ body {
     border: none;
     padding: 0.6em 1.2em;
     font-weight: 600;
-}
-.stButton>button:hover {
-    filter: brightness(0.9);
+
+    /* 기본 그림자 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        filter 0.15s ease;
 }
 
-/* 상태바 – 테마 자동 반응 */
+/* Hover – 살짝 떠오르는 느낌 */
+.stButton>button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+    filter: brightness(0.97);
+}
+
+/* Active – 눌리는 느낌 */
+.stButton>button:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* =========================
+   상태바 (테마 반응형)
+========================= */
 .status-bar {
     background-color: var(--secondary-background-color);
     color: var(--text-color);
@@ -166,7 +190,9 @@ body {
     border-left: 4px solid var(--primary-color);
 }
 
-/* 로그 박스 – 테마 자동 반응 */
+/* =========================
+   로그 박스 (테마 반응형)
+========================= */
 .log-box {
     background-color: var(--secondary-background-color);
     color: var(--text-color);
@@ -176,7 +202,21 @@ body {
     height: 120px;
     overflow-y: auto;
     font-size: 0.85em;
-    border: 1px solid rgba(0,0,0,0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* =========================
+   다크 테마 전용 미세 조정
+========================= */
+@media (prefers-color-scheme: dark) {
+    .stButton>button {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    }
+
+    .log-box,
+    .status-bar {
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
 }
 
 </style>
