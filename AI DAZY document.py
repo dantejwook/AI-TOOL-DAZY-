@@ -327,9 +327,6 @@ st.sidebar.markdown(
 #        st.toast("✅ Download Reset is complete.")
 #        st.rerun()
 
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
-
 st.sidebar.markdown("### 💡 사용 팁")
 st.sidebar.markdown(
     """
@@ -396,6 +393,9 @@ def log(msg):
         "<div class='log-box'>" + "<br>".join(logs[-10:]) + "</div>",
         unsafe_allow_html=True,
     )
+
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
 # ----------------------------
 # ✨ 유틸
