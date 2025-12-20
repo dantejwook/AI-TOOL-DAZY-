@@ -134,7 +134,7 @@ st.markdown(
 <style>
 
 /* =========================
-   앱 기본 배경 (테마 연동)
+   앱 기본 배경
 ========================= */
 body {
     background-color: var(--background-color);
@@ -142,7 +142,7 @@ body {
 }
 
 /* =========================
-   버튼 스타일 (그림자 유지)
+   버튼 스타일
 ========================= */
 .stButton>button {
     border-radius: 10px;
@@ -177,8 +177,7 @@ body {
 }
 
 /* =========================
-   상태바 (정보용 카드)
-   ❌ 버튼 윤곽 제거
+   상태바
 ========================= */
 .status-bar {
     background-color: var(--secondary-background-color);
@@ -199,18 +198,18 @@ body {
 .log-box {
     background-color: var(--secondary-background-color);
     color: var(--text-color);
-    border-radius: 6px;
     padding: 0.8em;
     margin-top: 10px;
     height: 120px;
     overflow-y: auto;
     font-size: 0.85em;
-    border: 1px solid var(--border-color, rgba(0,0,0,0.12));
+    border-radius: 12px;
+    box-shadow: none;
+    border: none;
 }
 
 /* =========================
-   다크 테마 미세 조정
-   (상태바 제외)
+   테마 미세 조정(상태바 제외)
 ========================= */
 @media (prefers-color-scheme: dark) {
     .log-box {
@@ -220,7 +219,7 @@ body {
 
 @media (prefers-color-scheme: light) {
     .log-box {
-        border: 1px solid rgba(0, 0, 0, 0.14);
+        border: 1px solid rgba(0, 0, 0, 0.18);
     }
 }
 
