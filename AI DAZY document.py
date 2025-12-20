@@ -203,9 +203,16 @@ body {
     height: 120px;
     overflow-y: auto;
     font-size: 0.85em;
+
+    /* 반을형 */
     border-radius: 12px;
-    box-shadow: none;
+
+    /* ❌ border 제거 */
     border: none;
+
+    /* ✅ Streamlit 대응 윤곽 */
+    outline-offset: -1px;
+    box-shadow: none;
 }
 
 /* =========================
@@ -213,13 +220,13 @@ body {
 ========================= */
 @media (prefers-color-scheme: dark) {
     .log-box {
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        outline: 1.5px solid rgba(255, 255, 255, 0.16);
     }
 }
 
 @media (prefers-color-scheme: light) {
     .log-box {
-        border: 1px solid rgba(0, 0, 0, 0.18);
+        outline: 1.5px solid rgba(0, 0, 0, 0.28);
     }
 }
 
