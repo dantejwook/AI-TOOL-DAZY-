@@ -126,9 +126,9 @@ if "api_key" not in st.session_state:
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 
-# ----------------------------
+# ============================
 # 🎨 스타일
-# ----------------------------
+# ============================
 st.markdown(
 """
 <style>
@@ -324,9 +324,9 @@ st.sidebar.markdown(
 """
 )
 
-# ----------------------------
+# ============================
 # 📁 메인 UI
-# ----------------------------
+# ============================
 left_col, right_col = st.columns([1, 1])
 
 st.subheader("AI auto file analyzer")
@@ -364,9 +364,9 @@ with right_col:
     zip_placeholder = st.empty()   # 👈 위에 두고
 
 
-# ----------------------------
+# ============================
 # ⚙️ 상태 / 로그
-# ----------------------------
+# ============================
 progress_placeholder = st.empty()
 progress_text = st.empty()
 log_box = st.empty()
@@ -382,9 +382,9 @@ def log(msg):
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
-# ----------------------------
+# ============================
 # ✨ 유틸
-# ----------------------------
+# ============================
 def sanitize_folder_name(name: str) -> str:
     name = (name or "").strip()
     name = re.sub(r"[^\w가-힣\s]", "", name)
