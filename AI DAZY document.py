@@ -615,7 +615,9 @@ if uploaded_files:
         main_folder = output_dir / main_group
         main_folder.mkdir(parents=True, exist_ok=True)
 
-        (main_folder / "★README.md").write_text(
+        readme_filename = f"★README_{main_group}.md"
+
+        (main_folder / readme_filename).write_text(
             generate_readme(main_group, [f.name for f in cluster_files]),
             encoding="utf-8",
         )
@@ -632,7 +634,9 @@ if uploaded_files:
             for f in sub_files:
                 (sub_folder / f.name).write_bytes(f.getvalue())
 
-            (sub_folder / "★README.md").write_text(
+            readme_filename = f"★README_{sub_group}.md"
+
+            (sub_folder / readme_filename).write_text(
                 generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
                 encoding="utf-8",
             )
