@@ -147,7 +147,11 @@ body {
 .stButton>button {
     border-radius: 10px;
     background-color: var(--primary-color);
-    color: white;
+    color: var(--text-color);
+
+    /* 밝은 배경에서 가독성 확보 */
+    text-shadow: 0 1px 1px rgba(0,0,0,0.15);
+    
     border: none;
     padding: 0.6em 1.2em;
     font-weight: 600;
