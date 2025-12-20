@@ -196,7 +196,7 @@ body {
    로그 박스 (카드 유지)
 ========================= */
 .log-box {
-    background-color: var(--secondary-background-color);
+    background-color: #dbede6;
     color: var(--text-color);
     padding: 0.8em;
     margin-top: 10px;
