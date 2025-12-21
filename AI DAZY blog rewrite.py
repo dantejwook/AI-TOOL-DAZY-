@@ -417,6 +417,12 @@ def update_progress(pct: int, msg: str):
 # ============================
 # ✨ 유틸 (파일/캐시 함수)
 # ============================
+def sanitize_folder_name(name: str) -> str:
+    """폴더/파일 이름에서 특수문자 제거하고 안전한 이름으로 변환"""
+    name = (name or "").strip()
+    name = re.sub(r"[^\w가-힣\s]", "", name)
+    name = re.sub(r"\s+", "_", name)
+    return name.strip("_") or "기타_문서"
 
 def load_category_structure(readme_file):
     text = readme_file.getvalue().decode("utf-8")
