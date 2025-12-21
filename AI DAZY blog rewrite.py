@@ -431,25 +431,29 @@ def title_from_filename(file_name: str) -> str:
     base = re.sub(r"\\s+", " ", base).strip()
     return base
 
-def embed_texts(texts):
-    """입력 텍스트 리스트를 OpenAI 임베딩 API로 변환"""
-    missing = [t for t in texts if h(t) not in embedding_cache]
+def embed_texts(texts, batch_size=50):
+    """입력 텍스트 리스트를 OpenAI 임베딩 API로 변환 (대용량 안전)"""
+    results = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        missing = [t for t in batch if h(t) not in embedding_cache]
 
-    if missing:
-        try:
-            r = openai.Embedding.create(
-                model="text-embedding-3-large",
-                input=missing,
-            )
-            for t, d in zip(missing, r["data"]):
-                embedding_cache[h(t)] = d["embedding"]
-            save_cache()
-        except Exception as e:
-            st.error(f"❌ 임베딩 생성 중 오류 발생: {e}")
-            return []
+        if missing:
+            try:
+                r = openai.Embedding.create(
+                    model="text-embedding-3-large",
+                    input=missing,
+                )
+                for t, d in zip(missing, r["data"]):
+                    embedding_cache[h(t)] = d["embedding"]
+                save_cache(EMBED_CACHE, embedding_cache)
+            except Exception as e:
+                st.error(f"❌ 임베딩 생성 중 오류 발생 (batch {i//batch_size+1}): {e}")
+                continue
 
-    # 캐시에 저장된 순서대로 임베딩 반환
-    return [embedding_cache[h(t)] for t in texts]
+        results.extend([embedding_cache[h(t)] for t in batch])
+
+    return results
 
 def load_category_structure(readme_file):
     text = readme_file.getvalue().decode("utf-8")
