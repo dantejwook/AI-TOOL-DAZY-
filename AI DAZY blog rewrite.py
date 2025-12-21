@@ -1,4 +1,4 @@
-# AI DAZY v2512190245_1.1
+# AI DAZY TEST MODE
 
 import streamlit as st
 import zipfile
