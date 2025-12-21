@@ -610,8 +610,11 @@ def generate_gap_report_readme(category_title, gap_report, folder_path):
 # 📁 전체 구조 생성 (엔트리 포인트)
 # =====================================================
 
-def build_structure(base_dir, category_title, category_readme_text, files):
+def build_structure(base_dir, category_title, category_readme_text, files, progress_cb=None):
     expanded = expand_documents_parallel(files, category_readme_text)
+
+    total = len(files)
+    done = 0
 
     root_name = f"폴더_{sanitize_folder_name(category_title)}"
     root_dir = os.path.join(base_dir, root_name)
@@ -624,7 +627,6 @@ def build_structure(base_dir, category_title, category_readme_text, files):
             []
         ).append((file, meta))
 
-    # 🔹 주제 폴더 + README
     for (parent, topic), items in grouped.items():
         parent_name = f"하위폴더_{sanitize_folder_name(parent)}"
         topic_name = f"주제_{sanitize_folder_name(topic)}"
@@ -637,6 +639,10 @@ def build_structure(base_dir, category_title, category_readme_text, files):
         for file, meta in items:
             os.rename(file.path, os.path.join(topic_dir, file.name))
             metas.append(meta)
+
+            done += 1
+            if progress_cb:
+                progress_cb(done, total, "파일 분류 중")
 
         folder_path = f"{root_name} / {parent_name} / {topic_name}"
         readme = generate_topic_readme(
@@ -653,7 +659,6 @@ def build_structure(base_dir, category_title, category_readme_text, files):
         ) as f:
             f.write(readme)
 
-    # 🔹 최상위 README
     top_header = build_readme_header(root_name)
     with open(
         os.path.join(root_dir, readme_filename(root_name)),
@@ -662,7 +667,6 @@ def build_structure(base_dir, category_title, category_readme_text, files):
     ) as f:
         f.write(top_header + f"\n# {category_title}\n")
 
-    # 🔹 보강 리포트
     expected = extract_expected_topics(category_readme_text)
     actual = collect_actual_topics(expanded)
     gaps = find_missing_topics(expected, actual)
@@ -684,8 +688,6 @@ def build_structure(base_dir, category_title, category_readme_text, files):
             f.write(gap_readme)
 
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 # ----------------------------
 # 🚀 메인 처리 (카테고리 기준 버전)
 # ----------------------------
@@ -704,7 +706,6 @@ if uploaded_files:
 
     log("[파일 업로드 완료]")
 
-    # 🔹 카테고리 README / 초안 분리
     category_file = None
     draft_files = []
 
@@ -720,7 +721,6 @@ if uploaded_files:
 
     category_text = category_file.getvalue().decode("utf-8")
 
-    # 🔹 임시 파일 객체 생성 (기존 코드 호환)
     class TempFile:
         def __init__(self, f):
             self.name = f.name
@@ -740,7 +740,6 @@ if uploaded_files:
         unsafe_allow_html=True
     )
 
-    # ✅ 추가: 실제 진행률 콜백 (이것만 추가됨)
     def progress_cb(done, total, phase):
         pct = int(done / total * 100) if total else 100
         progress.progress(pct)
@@ -749,42 +748,18 @@ if uploaded_files:
             unsafe_allow_html=True
         )
 
-        build_structure(
-            base_dir=output_dir,
-            category_title=category_file.name.rsplit(".", 1)[0],
-            category_readme_text=category_text,
-            files=temp_files,
-            progress_cb=progress_cb,   # ✅ 추가
-        )
-
-    done = total
-    pct = 80
-    progress.progress(pct)
-    progress_text.markdown(
-        f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
-        unsafe_allow_html=True
-    )
-
-    # 🔹 ZIP 생성
-    zip_path = Path("result_documents.zip")
-    with zipfile.ZipFile(zip_path, "w") as z:
-        for root, _, files in os.walk(output_dir):
-            for f in files:
-                p = os.path.join(root, f)
-                z.write(p, arcname=os.path.relpath(p, output_dir))
-
-    zip_placeholder.download_button(
-        "[ Download ]",
-        open(zip_path, "rb"),
-        file_name="result_documents.zip",
-        mime="application/zip",
-        use_container_width=True,
-        key="zip_download",
+    build_structure(
+        base_dir=output_dir,
+        category_title=category_file.name.rsplit(".", 1)[0],
+        category_readme_text=category_text,
+        files=temp_files,
+        progress_cb=progress_cb,
     )
 
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
+
 
 
 
