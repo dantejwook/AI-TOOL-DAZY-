@@ -15,7 +15,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from hdbscan import HDBSCAN
-from hashlib import sha256
 
 
 # ============================
@@ -34,11 +33,10 @@ TOKEN_EXPIRE_HOURS = 3
 # 🌈 기본 페이지 설정
 # ------------------------------------------
 st.set_page_config(
-    page_title="AI dazy document sorter",
+    page_title="AI dazy test mode",
     page_icon="🗂️",
     layout="wide",
 )
-
 # ============================
 # 🔒 Password + Token Gate
 # ============================
@@ -341,14 +339,26 @@ st.sidebar.markdown(
 # ============================
 # 📁 메인 UI
 # ============================
+
 left_col, right_col = st.columns([1, 1])
+
+if st.button("🚀 실행", use_container_width=True):
+    if not api_key or not readme_file or not content_files:
+        st.warning("README 파일, 초안 파일을 모두 업로드하세요.")
+    else:
+        with st.spinner("AI가 문서를 분석하고 있습니다... 잠시만요!"):
+            result_zip = process_documents(readme_file, content_files, api_key)
+            st.success("✅ 처리 완료! 아래에서 ZIP을 다운로드하세요.")
+            st.download_button("📦 결과 ZIP 다운로드", open(result_zip, "rb"), file_name="AI_Blog_Sorted.zip")
 
 st.subheader("AI auto file analyzer")
 st.caption("문서를 분석하고 자동으로 구조화합니다")
 
 with left_col:
     st.subheader("File upload")
-    uploaded_files = st.file_uploader(
+    readme_file = st.file_uploader("📘 블로그 카테고리 README 파일 업로드", type=["md"])
+    content_files = st.file_uploader("📄 블로그 초안 파일 업로드 (복수 가능)"
+    (
         "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
@@ -627,26 +637,6 @@ def process_documents(readme_file, content_files, api_key):
                 path = Path(root) / f
                 z.write(path, arcname=path.relative_to(base))
     return zip_path
-
-
-# ==========================================================
-# 🌈 Streamlit 인터페이스
-# ==========================================================
-st.set_page_config(page_title="AI 블로그 문서 자동 분류기", page_icon="🧠", layout="wide")
-st.title("🧠 AI 블로그 문서 자동 분류 + README 생성기")
-
-api_key = st.text_input("🔑 OpenAI API Key", type="password", placeholder="sk-...")
-readme_file = st.file_uploader("📘 블로그 카테고리 README 파일 업로드", type=["md"])
-content_files = st.file_uploader("📄 블로그 초안 파일 업로드 (복수 가능)", type=["md", "txt", "pdf"], accept_multiple_files=True)
-
-if st.button("🚀 실행", use_container_width=True):
-    if not api_key or not readme_file or not content_files:
-        st.warning("API Key, README 파일, 초안 파일을 모두 업로드하세요.")
-    else:
-        with st.spinner("AI가 문서를 분석하고 있습니다... 잠시만요!"):
-            result_zip = process_documents(readme_file, content_files, api_key)
-            st.success("✅ 처리 완료! 아래에서 ZIP을 다운로드하세요.")
-            st.download_button("📦 결과 ZIP 다운로드", open(result_zip, "rb"), file_name="AI_Blog_Sorted.zip")
 
 # 기능 영역 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
