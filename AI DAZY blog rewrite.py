@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from hdbscan import HDBSCAN
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 # ============================
