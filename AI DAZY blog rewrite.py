@@ -423,7 +423,14 @@ def sanitize_folder_name(name: str) -> str:
     name = re.sub(r"[^\w가-힣\s]", "", name)
     name = re.sub(r"\s+", "_", name)
     return name.strip("_") or "기타_문서"
-
+    
+def title_from_filename(file_name: str) -> str:
+    """파일 이름에서 확장자를 제거하고, 밑줄/하이픈 등을 공백으로 바꾼 제목 문자열 반환"""
+    base = file_name.rsplit(".", 1)[0]
+    base = re.sub(r"[_\\-]+", " ", base)
+    base = re.sub(r"\\s+", " ", base).strip()
+    return base
+    
 def load_category_structure(readme_file):
     text = readme_file.getvalue().decode("utf-8")
     prompt = f"""
