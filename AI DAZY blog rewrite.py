@@ -434,12 +434,14 @@ def expand_document_with_gpt(file):
 기준 분류 체계로 사용하는 역할이다.
 
 아래 문서는 블로그 초안이다.
-이 문서가 어느 카테고리/세부 주제에 속하는지
-판단할 수 있도록 의미를 정규화하라.
+이 문서가 README에 정의된
+카테고리 또는 세부 주제 중
+어디에 속하는지 판단할 수 있도록
+의미를 정규화하라.
 
 ❗중요 규칙
 - 새로운 카테고리나 주제를 만들지 마라
-- README에 존재하는 카테고리 기준으로만 해석하라
+- README에 존재하는 표현 기준으로만 해석하라
 - 분류나 그룹핑은 하지 말고 의미 정보만 추출하라
 - 요약문 작성 금지
 
@@ -558,34 +560,37 @@ def generate_group_name(names):
     if k in group_cache:
         return group_cache[k]
 
-    prompt = """
-다음 문서들은
-이미 정의된 [블로그 카테고리 및 세부 주제가 정리된 README]의
-세부 주제 중 하나에 해당한다.
+    prompt = f"""
+다음 문서들은 이미 생성된 블로그 카테고리 폴더 중
+하나에 반드시 속한다.
 
 규칙:
-- README에 존재하는 주제 표현을 그대로 사용
-- 새 표현 생성 금지
-- 2~4 단어
-- 조사 사용 금지
-- 설명 금지
-- 한글만 출력
+- 새로운 이름을 만들지 마라
+- 반드시 아래 폴더명 중 하나만 그대로 선택하라
+- 가장 관련성이 높은 하나만 선택하라
+- 출력은 폴더명 하나만
+
+선택 가능한 폴더 목록:
+{chr(10).join(os.listdir("output_docs"))}
+
+문서 제목:
+{chr(10).join(names)}
 """
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
-            {"role": "user", "content": prompt + "\n" + "\n".join(names)},
+            {"role": "system", "content": "너는 기존 폴더명 중 하나만 선택하는 분류기다."},
+            {"role": "user", "content": prompt},
         ],
-        temperature=0.3,
+        temperature=0.1,
     )
 
     name = sanitize_folder_name(r["choices"][0]["message"]["content"])
     group_cache[k] = name
     save_cache(GROUP_CACHE, group_cache)
     return name
-
+# -
 def generate_readme(topic, files, auto_split=False):
     k = h(("split" if auto_split else "nosplit") + topic + "||" + "||".join(sorted(files)))
     if k in readme_cache:
@@ -647,7 +652,7 @@ if uploaded_files:
     log("[파일 업로드 완료]")
 
     # ==================================================
-    # 📘 카테고리 README 기반 폴더 선생성
+    # 📘 카테고리 README 기반 폴더 생성
     # ==================================================
 
     # 1. 업로드된 파일 중 카테고리 README 선택
@@ -680,7 +685,7 @@ if uploaded_files:
                 exist_ok=True
             )
 
-    log("[카테고리 README 기반 폴더 선생성 완료]")
+    log("[카테고리 폴더생성 완료]")
 
 
     top_clusters = recursive_cluster(uploaded_files)
