@@ -471,7 +471,7 @@ def load_category_structure(readme_file):
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 문서를 JSON 구조로 파싱하는 전문가다."},
             {"role": "user", "content": prompt + "\n" + text}
