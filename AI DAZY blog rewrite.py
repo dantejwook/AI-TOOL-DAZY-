@@ -527,10 +527,13 @@ README 요약 파일을 작성하세요.
     return r["choices"][0]["message"]["content"].strip()
 
 # ============================
-# 🚀 메인 파이프라인 실행
+# 🚀 메인 파이프라인 실행 (상태바 포함)
 # ============================
 
 if uploaded_files:
+    # 초기 상태 0%
+    update_progress(0, "대기 중…")
+
     readme_file = None
     blog_files = []
     for f in uploaded_files:
@@ -547,28 +550,68 @@ if uploaded_files:
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True)
 
-    log("📘 카테고리 구조 분석 중...")
+    # 단계별 가중치 (총 100%)
+    # 파싱 10, 임베딩 25, 매핑 25, README 생성 35, ZIP 5
+    update_progress(5, "환경 초기화…")
+
+    # 1) 카테고리 파싱 (10%)
+    update_progress(10, "📘 카테고리 구조 분석 중…")
     category_structure = load_category_structure(readme_file)
+
+    # 폴더 뼈대 생성 (UI 변화 없음)
     folder_map = create_category_folders(output_dir, category_structure)
+    update_progress(15, "📂 폴더 구조 준비 완료")
 
-    log("🧠 블로그 문서 임베딩 생성 중...")
+    # 2) 임베딩 (25%)
+    update_progress(20, "🧠 블로그 문서 임베딩 생성 중…")
     embeddings = prepare_blog_embeddings(blog_files)
+    update_progress(35, "🧠 임베딩 완료")
 
-    log("📦 문서를 카테고리별로 매핑 중...")
+    # 3) 매핑 (25%)
+    update_progress(40, "📦 문서를 카테고리별로 매핑 중…")
     mapping = match_documents_to_categories(embeddings, category_structure)
+    update_progress(65, "📦 매핑 완료")
 
-    log("📝 README 요약 생성 중...")
+    # 4) README 생성 (35%) — 하위 단위별로 세밀 진행률
+    # 전체 README 생성 개수 계산
+    total_subtopics = sum(len(v.get("subtopics", [])) for v in category_structure)
+    # 실제 문서가 매핑된 subtopic만 집계
+    total_work_units = max(
+        1,
+        sum(len(files) > 0 for _, subtopics in mapping.items() for _, files in subtopics.items())
+    )
+
+    unit_weight = 35 / total_work_units  # 각각의 주제 완료 시 진행률 반영
+    cur_pct = 65
+    update_progress(cur_pct, "📝 README 요약 생성 시작…")
+
     for category, subtopics in mapping.items():
+        cat_folder = output_dir / sanitize_folder_name(category)
+        cat_folder.mkdir(exist_ok=True)
+
         for sub, files in subtopics.items():
             if not files:
                 continue
-            folder = folder_map[category][sub]
-            for f in files:
-                (folder / f.name).write_bytes(f.getvalue())
-            summary = generate_summary_readme(category, sub, files)
-            (folder / f"README_{sanitize_folder_name(sub)}.md").write_text(summary, encoding="utf-8")
 
-    log("📦 ZIP 파일 생성 중...")
+            sub_folder = cat_folder / sanitize_folder_name(sub)
+            sub_folder.mkdir(exist_ok=True)
+
+            # 파일 저장
+            for f in files:
+                (sub_folder / f.name).write_bytes(f.getvalue())
+
+            # README 생성
+            summary = generate_summary_readme(category, sub, files)
+            (sub_folder / f"README_{sanitize_folder_name(sub)}.md").write_text(
+                summary, encoding="utf-8"
+            )
+
+            # 진행률 갱신
+            cur_pct = min(100, int(cur_pct + unit_weight))
+            update_progress(cur_pct, f"📝 README 생성 중… ({category} > {sub})")
+
+    # 5) ZIP (5%)
+    update_progress(95, "📦 ZIP 파일 생성 중…")
     zip_path = Path("result_documents.zip")
     with zipfile.ZipFile(zip_path, "w") as z:
         for root, _, files in os.walk(output_dir):
@@ -584,7 +627,7 @@ if uploaded_files:
         use_container_width=True,
     )
 
-    log("✅ 모든 카테고리 분류 및 README 요약 완료!")
+    update_progress(100, "✅ 모든 카테고리 분류 및 README 요약 완료!")
 
 # 기능 영역 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
