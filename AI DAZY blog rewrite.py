@@ -649,7 +649,7 @@ README 요약 파일을 작성하세요.
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 블로그 카테고리 기반 요약문서를 생성하는 전문가다."},
             {"role": "user", "content": prompt},
@@ -706,40 +706,43 @@ if uploaded_files:
     update_progress(65, "📦 매핑 완료")
 
     # 4) README 생성 (35%) — 하위 단위별로 세밀 진행률
-    # 전체 README 생성 개수 계산
-    total_subtopics = sum(len(v.get("subtopics", [])) for v in category_structure)
-    # 실제 문서가 매핑된 subtopic만 집계
     total_work_units = max(
         1,
         sum(len(files) > 0 for _, subtopics in mapping.items() for _, files in subtopics.items())
     )
-
-    unit_weight = 35 / total_work_units  # 각각의 주제 완료 시 진행률 반영
+    unit_weight = 35 / total_work_units
     cur_pct = 65
     update_progress(cur_pct, "📝 README 요약 생성 시작…")
 
     for category, subtopics in mapping.items():
-        cat_folder = output_dir / sanitize_folder_name(category)
+        # 🔹 상위 폴더명: 카테고리 이름 + 태그 결합
+        cat_folder_name = f"{sanitize_folder_name(category)}_[{sanitize_folder_name(category_structure[0]['category'])}]"
+        cat_folder = output_dir / cat_folder_name
         cat_folder.mkdir(exist_ok=True)
+        log(f"📁 상위 폴더 생성: {cat_folder_name}")
 
         for sub, files in subtopics.items():
             if not files:
                 continue
 
-            sub_folder = cat_folder / sanitize_folder_name(sub)
+            # 🔹 하위 폴더명: [카테고리]_주제명
+            sub_folder_name = f"[{sanitize_folder_name(category)}]_{sanitize_folder_name(sub)}"
+            sub_folder = cat_folder / sub_folder_name
             sub_folder.mkdir(exist_ok=True)
+            log(f"📂 하위 폴더 생성: {sub_folder_name}")
 
-            # 파일 저장
+            # 🔹 파일 저장 시 이름에도 주제명 추가
             for f in files:
-                (sub_folder / f.name).write_bytes(f.getvalue())
+                new_name = f"[{sanitize_folder_name(sub)}]_{f.name}"
+                (sub_folder / new_name).write_bytes(f.getvalue())
 
-            # README 생성
+            # 🔹 README 생성
             summary = generate_summary_readme(category, sub, files)
-            (sub_folder / f"★README_{sanitize_folder_name(sub)}.md").write_text(
-                summary, encoding="utf-8"
-            )
+            readme_name = f"README_[{sanitize_folder_name(category)}]_{sanitize_folder_name(sub)}.md"
+            (sub_folder / readme_name).write_text(summary, encoding="utf-8")
+            log(f"🧾 README 생성 완료: {readme_name}")
 
-            # 진행률 갱신
+            # 🔹 진행률 업데이트
             cur_pct = min(100, int(cur_pct + unit_weight))
             update_progress(cur_pct, f"📝 README 생성 중… ({category} > {sub})")
 
