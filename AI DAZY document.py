@@ -204,7 +204,7 @@ body {
     overflow-y: auto;
     font-size: 0.85em;
 
-    /* 반을형 */
+    /* 반응형 */
     border-radius: 12px;
 
     /* ❌ border 제거 */
@@ -615,7 +615,7 @@ if uploaded_files:
 
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
-    log("파일 업로드 완료")
+    log("[파일 업로드 완료]")
 
     top_clusters = recursive_cluster(uploaded_files)
     total = len(top_clusters)
@@ -656,7 +656,7 @@ if uploaded_files:
         pct = int(done / total * 100)
         progress.progress(pct)
         progress_text.markdown(
-            f"<div class='status-bar'>정리 중… [{pct}%] ({done} / {total} 파일)</div>",
+            f"<div class='status-bar'>|정리 중…| [{pct}%] ({done} / {total} 파일)</div>",
             unsafe_allow_html=True
         )
         log(f"{main_group} 처리 완료")
