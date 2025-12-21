@@ -616,7 +616,7 @@ def match_documents_to_categories(embeddings, category_structure):
         cat, sub = all_topics[best_idx]
         match_results[cat][sub].append(file_obj)
 
-    st.success("✅ 문서-카테고리 매핑 완료.")
+    st.write"✅ 문서-카테고리 매핑 완료.".
     return match_results
 
 # ============================
