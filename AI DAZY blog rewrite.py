@@ -395,7 +395,254 @@ def h(t: str):
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-aa
+import re
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import openai
+from hdbscan import HDBSCAN
+
+
+# ============================ #
+# ✨ 유틸
+# ============================
+
+def sanitize_folder_name(name: str) -> str:
+    name = (name or "").strip()
+    name = re.sub(r"[^\w가-힣\s]", "", name)
+    name = re.sub(r"\s+", "_", name)
+    return name.strip("_") or "기타_문서"
+
+
+def unique_folder_name(base: str, existing: set) -> str:
+    if base not in existing:
+        return base
+    i = 1
+    while f"{base}_{i}" in existing:
+        i += 1
+    return f"{base}_{i}"
+
+
+def title_from_filename(file_name: str) -> str:
+    base = file_name.rsplit(".", 1)[0]
+    base = re.sub(r"[_\-]+", " ", base)
+    base = re.sub(r"\s+", " ", base).strip()
+    return base
+
+
+# ============================ #
+# 🧠 0차 GPT EXPAND
+# ============================
+
+def expand_document_with_gpt(file):
+    key = h(file.name)
+    if key in expand_cache:
+        return expand_cache[key]
+
+    fallback_title = title_from_filename(file.name)
+
+    prompt = f"""
+다음 문서를 분류하기 쉽게 의미적으로 정규화하라.
+분류나 그룹핑은 하지 말고, 의미만 추출하라.
+출력은 반드시 JSON 하나만 출력한다.
+
+형식:
+{{
+  "canonical_title": "...",
+  "keywords": ["...", "..."],
+  "domain": "...",
+  "embedding_text": "..."
+}}
+
+문서 파일명: {file.name}
+"""
+
+    try:
+        r = openai.ChatCompletion.create(
+            model="gpt-5-nano",
+            messages=[
+                {"role": "system", "content": "너는 문서를 분류하기 쉽게 정규화하는 역할이다."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+        )
+
+        data = json.loads(r["choices"][0]["message"]["content"])
+        if "embedding_text" not in data:
+            raise ValueError
+
+    except Exception:
+        data = {
+            "canonical_title": fallback_title,
+            "keywords": fallback_title.split(),
+            "domain": "기타",
+            "embedding_text": f"제목: {fallback_title}",
+        }
+
+    expand_cache[key] = data
+    save_cache(EXPAND_CACHE, expand_cache)
+    return data
+
+
+# ============================ #
+# ⭐ 0차 EXPAND 병렬 처리
+# ============================
+
+def expand_documents_parallel(files, max_workers=5):
+    results = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(expand_document_with_gpt, f): f
+            for f in files
+        }
+
+        for future in as_completed(futures):
+            f = futures[future]
+            try:
+                results[f] = future.result()
+            except Exception:
+                fallback_title = title_from_filename(f.name)
+                results[f] = {
+                    "canonical_title": fallback_title,
+                    "keywords": fallback_title.split(),
+                    "domain": "기타",
+                    "embedding_text": f"제목: {fallback_title}",
+                }
+
+    return [results[f] for f in files]
+
+
+# ============================ #
+# ✨ 임베딩
+# ============================
+
+def embed_texts(texts):
+    missing = [t for t in texts if h(t) not in embedding_cache]
+
+    if missing:
+        r = openai.Embedding.create(
+            model="text-embedding-3-large",
+            input=missing,
+        )
+
+        for t, d in zip(missing, r["data"]):
+            embedding_cache[h(t)] = d["embedding"]
+
+        save_cache(EMBED_CACHE, embedding_cache)
+
+    return [embedding_cache[h(t)] for t in texts]
+
+
+# ============================ #
+# 📦 클러스터링
+# ============================
+
+def cluster_documents(files):
+    expanded = expand_documents_parallel(files, max_workers=5)
+    vectors = embed_texts([e["embedding_text"] for e in expanded])
+
+    return HDBSCAN(
+        min_cluster_size=3,
+        min_samples=1
+    ).fit_predict(vectors)
+
+
+# ============================ #
+# 🔁 자동 재분해
+# ============================
+
+def recursive_cluster(files, depth=0):
+    if len(files) <= MAX_FILES_PER_CLUSTER or depth >= MAX_RECURSION_DEPTH:
+        return [files]
+
+    labels = cluster_documents(files)
+    groups = {}
+
+    for f, l in zip(files, labels):
+        groups.setdefault(l, []).append(f)
+
+    result = []
+    for g in groups.values():
+        if len(g) > MAX_FILES_PER_CLUSTER:
+            result.extend(recursive_cluster(g, depth + 1))
+        else:
+            result.append(g)
+
+    return result
+
+
+# ============================ #
+# ✨ GPT 폴더명 / README
+# ============================
+
+def generate_group_name(names):
+    k = h("||".join(sorted(names)))
+    if k in group_cache:
+        return group_cache[k]
+
+    prompt = """
+다음 문서 제목들의 공통 주제를 대표하는
+짧고 명확한 한글 폴더명 하나만 출력하세요.
+
+규칙:
+- 2~4 단어
+- 조사 사용 금지
+- 숫자/번호 금지
+- 설명 금지
+"""
+
+    r = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
+            {"role": "user", "content": prompt + "\n" + "\n".join(names)},
+        ],
+        temperature=0.3,
+    )
+
+    name = sanitize_folder_name(r["choices"][0]["message"]["content"])
+    group_cache[k] = name
+    save_cache(GROUP_CACHE, group_cache)
+    return name
+
+
+def generate_readme(topic, files, auto_split=False):
+    k = h(
+        ("split" if auto_split else "nosplit")
+        + topic
+        + "||"
+        + "||".join(sorted(files))
+    )
+
+    if k in readme_cache:
+        return readme_cache[k]
+
+    notice = AUTO_SPLIT_NOTICE if auto_split else ""
+
+    prompt = f"""
+{notice}
+다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
+각 문서의 관계와 활용 목적을 설명하는 README.md를 작성하세요.
+반드시 한국어로 작성하세요.
+
+문서 목록:
+{chr(10).join(files)}
+"""
+
+    r = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 한국어로만 README를 작성한다."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+
+    content = notice + r["choices"][0]["message"]["content"].strip()
+    readme_cache[k] = content
+    save_cache(README_CACHE, readme_cache)
+    return content
+
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
