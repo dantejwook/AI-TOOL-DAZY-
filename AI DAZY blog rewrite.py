@@ -1,5 +1,4 @@
-# AI DAZY v2512190245_1.1
-
+# AI DAZY testmode
 import streamlit as st
 import zipfile
 import os
@@ -12,9 +11,11 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
+from hdbscan import HDBSCAN
+
 
 # ============================
-# 🔧 기존 설정값 (유지)
+# 🔧 Recursive Split Settings
 # ============================
 MAX_FILES_PER_CLUSTER = 25
 MAX_RECURSION_DEPTH = 2
@@ -26,11 +27,11 @@ TOKEN_STORE = {}
 TOKEN_EXPIRE_HOURS = 3
 
 # ----------------------------
-# 🌈 기본 페이지 설정 (유지)
+# 🌈 기본 페이지 설정
 # ----------------------------
 st.set_page_config(
-    page_title="AI dazy Blog Rewriter",
-    page_icon="📝",
+    page_title="AI dazy test mode",
+    page_icon="🗂️",
     layout="wide",
 )
 
@@ -45,9 +46,11 @@ token = params.get("auth", [None])[0]
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+# 토큰 있으면 인증된 것으로 간주
 if token:
     st.session_state.authenticated = True
 
+# 비인증 상태 → 비밀번호 입력
 if not st.session_state.authenticated:
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     col = st.columns([1, 2, 1])[1]
@@ -56,11 +59,11 @@ if not st.session_state.authenticated:
         st.markdown(
             """
             <div style="
-                background:#444;
+                background:var(--secondary-background-color);
                 padding:2rem;
                 border-radius:16px;
                 text-align:center;
-                color:white;">
+                color:var(--text-color);">
                 <h2>🔒 Access Password</h2>
                 <p>이 앱은 제한된 사용자만 접근할 수 있습니다.</p>
             </div>
@@ -87,7 +90,7 @@ if not st.session_state.authenticated:
 # ============================
 if "api_key" not in st.session_state:
     st.markdown("### 🔑 OpenAI API Key")
-
+ 
     api_key_input = st.text_input(
         "OpenAI API Key",
         type="password",
@@ -97,11 +100,17 @@ if "api_key" not in st.session_state:
     st.caption("1️⃣ 해당앱은 chat gpt / openai를 사용합니다. ")
     st.caption("2️⃣ openai 에서 발급한 api key 를 사용해주세요.")
     st.caption("3️⃣ api key 발급 받기 : [ https://openai.com/ko-KR/api/ ]")
-
+    
     if api_key_input:
         try:
             openai.api_key = api_key_input
-            # ❗ 구버전 SDK 호환용: 사전 검증 제거
+            openai.Model.list()  # 유효성 검사
+
+            TOKEN_STORE[token] = {
+                "api_key": api_key_input,
+                "expires_at": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS),
+            }
+
             st.session_state.api_key = api_key_input
             st.success("API Key 인증 완료")
             st.rerun()
@@ -110,47 +119,189 @@ if "api_key" not in st.session_state:
 
     st.stop()
 
-openai.api_key = st.session_state.api_key
-
 # ============================
 # 📁 File Uploader State (초기 1회)
 # ============================
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 
-# ----------------------------
-# 🎨 스타일 (유지)
-# ----------------------------
+# ============================
+# 🎨 스타일
+# ============================
 st.markdown(
-    """
-    <style>
-    body { background-color: #f8f9fc; font-family: 'Pretendard', sans-serif; }
-    .stButton>button {
-        border-radius: 10px; background-color: #4a6cf7; color: white;
-        border: none; padding: 0.6em 1.2em; font-weight: 600;
-    }
-    .stButton>button:hover { background-color: #3451c1; }
-    .status-bar {
-        background-color: #0e1117; border-radius: 6px;
-        padding: 0.5em; margin-top: 10px; font-size: 0.9em;
-    }
+"""
+<style>
+
+/* =========================
+   앱 기본 배경
+========================= */
+body {
+    background-color: var(--background-color);
+    font-family: 'Pretendard', sans-serif;
+}
+
+/* =========================
+   버튼 스타일
+========================= */
+.stButton>button {
+    border-radius: 10px;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+
+    /* 밝은 배경에서 가독성 확보 */
+    text-shadow: 0 1px 1px rgba(0,0,0,0.15);
+    
+    border: none;
+    padding: 0.6em 1.2em;
+    font-weight: 600;
+
+    /* 버튼 전용 그림자 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        filter 0.15s ease;
+}
+
+.stButton>button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+    filter: brightness(0.97);
+}
+
+.stButton>button:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* =========================
+   상태바
+========================= */
+.status-bar {
+    background-color: var(--secondary-background-color);
+    color: var(--text-color);
+    border-radius: 6px;
+    padding: 0.5em;
+    margin-top: 10px;
+    font-size: 0.9em;
+
+    /* 버튼처럼 보이게 하는 요소 제거 */
+    box-shadow: none;
+    border: none;
+}
+
+/* =========================
+   로그 박스 (카드 유지)
+========================= */
+.log-box {
+    background-color: #dbede6;
+    color: #050505;
+    padding: 0.8em;
+    margin-top: 10px;
+    height: 120px;
+    overflow-y: auto;
+    font-size: 0.85em;
+
+    /* 반응형 */
+    border-radius: 12px;
+
+    /* ❌ border 제거 */
+    border: none;
+
+    /* ✅ Streamlit 대응 윤곽 */
+    outline-offset: -1px;
+    box-shadow: none;
+}
+
+/* =========================
+   테마 미세 조정(상태바 제외)
+========================= */
+@media (prefers-color-scheme: dark) {
     .log-box {
-        background-color: #262A32; border-radius: 6px;
-        padding: 0.8em; margin-top: 10px;
-        height: 120px; overflow-y: auto; font-size: 0.85em;
-        border: none;
+        outline: 1.5px solid rgba(255, 255, 255, 0.16);
     }
-    </style>
-    """,
-    unsafe_allow_html=True,
+}
+
+@media (prefers-color-scheme: light) {
+    .log-box {
+        outline: 1.5px solid rgba(0, 0, 0, 0.28);
+    }
+}
+
+</style>
+""",
+unsafe_allow_html=True,
 )
 
+# ============================
+# 사이드바 설정 부분
+# ============================
+
 # ----------------------------
-# 🧭 사이드바 (유지)
+# 캐시
 # ----------------------------
+CACHE_DIR = Path(".cache")
+CACHE_DIR.mkdir(exist_ok=True)
+
+def load_cache(p):
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:
+        return {}
+
+def save_cache(p, d):
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+
+EMBED_CACHE = CACHE_DIR / "embeddings.json"
+GROUP_CACHE = CACHE_DIR / "group_names.json"
+README_CACHE = CACHE_DIR / "readmes.json"
+EXPAND_CACHE = CACHE_DIR / "expands.json"
+
+embedding_cache = load_cache(EMBED_CACHE)
+group_cache = load_cache(GROUP_CACHE)
+readme_cache = load_cache(README_CACHE)
+expand_cache = load_cache(EXPAND_CACHE)
+
+def reset_cache():
+    if CACHE_DIR.exists():
+        shutil.rmtree(CACHE_DIR)
+    CACHE_DIR.mkdir(exist_ok=True)
+    embedding_cache.clear()
+    group_cache.clear()
+    readme_cache.clear()
+    expand_cache.clear()
+
+def reset_output():
+    output_dir = Path("output_docs")
+    zip_path = Path("result_documents.zip")
+
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    if zip_path.exists():
+        zip_path.unlink()
+
+st.sidebar.markdown(
+    """
+
+"""
+)
+
+# ============================
+#  사이드바 UI
+# ============================
+
+# ----------------------------
+# ✅ API Session Active (Sidebar)
+# ----------------------------
+openai.api_key = st.session_state.api_key
+
 with st.sidebar:
     st.success("API 인증 성공")
 
+# ----------------------------
+# 🔒 Logout Button
+# ----------------------------
 st.sidebar.title("⚙️ Setting")
 col1, col2 = st.sidebar.columns([1, 1], gap="small")
 
@@ -161,9 +312,14 @@ with col1:
 
 with col2:
     if st.button("로그아웃", use_container_width=True):
+    # 인증 상태 제거
         st.session_state.pop("authenticated", None)
         st.session_state.pop("api_key", None)
+
+    # URL 토큰 제거
         st.experimental_set_query_params()
+
+    # 전체 리셋
         st.rerun()
 
 st.sidebar.markdown("### 💡 사용 팁")
@@ -178,9 +334,9 @@ st.sidebar.markdown(
 """
 )
 
-# ----------------------------
-# 📁 메인 UI (유지)
-# ----------------------------
+# ============================
+# 📁 메인 UI
+# ============================
 left_col, right_col = st.columns([1, 1])
 
 st.subheader("AI auto file analyzer")
@@ -191,38 +347,36 @@ with left_col:
     uploaded_files = st.file_uploader(
         "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
-        type=["md", "txt"],
+        type=["md", "pdf", "txt"],
         key=f"uploader_{st.session_state.uploader_key}",
     )
-
-    # 🔹 기존 UI 흐름 유지 + 최소 입력
-  
     if st.button("Upload File Reset", use_container_width=True):
         st.session_state.uploader_key += 1
         st.rerun()
-
+    # ✅ 반드시 여기 안에서
     col2, col3 = st.columns([1, 1], gap="small")
 
     with col2:
         if st.button("Cache Reset", use_container_width=True):
+            reset_cache()
             st.rerun()
-
+            
     with col3:
         if st.button("Download Reset", use_container_width=True):
-            if Path("output_docs").exists():
-                shutil.rmtree("output_docs")
-            if Path("result_documents.zip").exists():
-                os.remove("result_documents.zip")
+            reset_output()
             st.rerun()
+
 
 with right_col:
     st.subheader("ZIP Download")
     st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
-    zip_placeholder = st.empty()
 
-# ----------------------------
-# ⚙️ 상태 / 로그 (유지)
-# ----------------------------
+    zip_placeholder = st.empty()   # 👈 위에 두고
+
+
+# ============================
+# ⚙️ 상태 / 로그
+# ============================
 progress_placeholder = st.empty()
 progress_text = st.empty()
 log_box = st.empty()
@@ -235,193 +389,88 @@ def log(msg):
         unsafe_allow_html=True,
     )
 
+def h(t: str):
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+aa
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 # ----------------------------
-# 🧩 JSON 안전 파서 (필수)
-# ----------------------------
-def safe_json_loads(text: str):
-    """
-    모델이 여러 JSON / 잡문을 섞어 출력해도
-    '첫 번째 유효한 JSON'만 정확히 파싱한다.
-    """
-    if not text:
-        raise ValueError("Empty response")
-
-    t = text.strip()
-
-    # ```json ... ``` 코드펜스 제거
-    t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.IGNORECASE)
-    t = re.sub(r"\s*```$", "", t)
-
-    decoder = json.JSONDecoder()
-
-    # 배열이 먼저면 배열 시도
-    t_strip = t.lstrip()
-    if t_strip.startswith("["):
-        obj, _ = decoder.raw_decode(t_strip)
-        return obj
-
-    # 객체 시도
-    if t_strip.startswith("{"):
-        obj, _ = decoder.raw_decode(t_strip)
-        return obj
-
-    # 중간에 JSON이 있는 경우를 위해 '{' 또는 '[' 이후부터 재시도
-    for idx, ch in enumerate(t):
-        if ch in "{[":
-            try:
-                obj, _ = decoder.raw_decode(t[idx:])
-                return obj
-            except Exception:
-                continue
-
-    raise ValueError("No valid JSON found")
-
-# ==================================================
-# 🧠 3-STEP BLOG REWRITE LOGIC (복구 완료)
-# ==================================================
-
-# ① 초안 병합 (JSON)
-def merge_drafts(drafts_text):
-    prompt = f"""
-당신은 전문 테크 블로그 에디터입니다.
-아래 여러 개의 블로그 초안을 하나의 글로 통합하기 위한
-'편집용 정리본'을 작성하세요.
-
-요구사항:
-- 최종 글 작성 금지
-- 설명 금지
-- 반드시 JSON 하나만 출력
-
-출력 형식:
-{{
-  "core_topic": "...",
-  "search_intent": "...",
-  "key_points": ["...", "..."],
-  "recommended_structure": ["도입", "본문1", "본문2", "결론"],
-  "merged_notes": "..."
-}}
-
-
-초안:
-{drafts_text}
-"""
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return safe_json_loads(r["choices"][0]["message"]["content"])
-
-# ② SEO 제목 / 메타 (JSON)
-def generate_titles_meta(keyword, count=5):
-    # keyword가 비어있으면 JSON 출력이 흔들릴 수 있어 최소 방어
-    keyword = (keyword or "").strip()
-    if not keyword:
-        keyword = "기술 블로그"
-
-    prompt = f"""
-<제목, 메타 프롬프트>
-
-당신은 SEO 최적화 블로그 전략가입니다. 사용자 키워드에 대해 검색 의도와 카테고리를 고려하여 클릭을 유도하는 한국어 제목과 메타 설명을 작성하세요.
-요구사항:
-- 결과 수: {count}
-- 각 결과는 JSON 객체 형식으로 출력하세요. 필드: title(문자열), meta_description(문자열), tags(문자열 배열)
-- 제목은 45~60자 내외, 메타 설명은 120~155자 내외
-- 키워드: '{keyword}'
-- 상업적/정보/내비게이션 의도 중 적절히 혼합
-- 중복 없이 다양하게
-출력은 반드시 JSON 배열 형식만으로 제공하세요.
-
-중요:
-- 설명/서문/코드펜스/추가 텍스트 절대 금지
-- 반드시 '[' 로 시작해서 ']' 로 끝나는 JSON 배열만 출력
-"""
-
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "너는 오직 JSON 배열만 출력한다. 다른 텍스트를 절대 출력하지 않는다."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.2,
-    )
-
-    raw = r["choices"][0]["message"]["content"]
-    try:
-        data = safe_json_loads(raw)
-        # 최소 검증: 배열이어야 함
-        if not isinstance(data, list) or len(data) == 0:
-            raise ValueError("Not a non-empty JSON array")
-        return data
-    except Exception:
-        # 로그에 원문 일부만 남기면 디버깅 쉬움 (UI 변경 없이 log 사용)
-        log("⚠️ SEO JSON 파싱 실패 → 결과 재시도")
-        # 1회 재시도(temperature 낮게)
-        r2 = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "JSON 배열만 출력. 다른 글자 출력 금지."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.0,
-        )
-        raw2 = r2["choices"][0]["message"]["content"]
-        data2 = safe_json_loads(raw2)
-        if not isinstance(data2, list) or len(data2) == 0:
-            raise ValueError("SEO JSON still invalid")
-        return data2
-        
-# ----------------------------
-# 🚀 메인 처리 (UI 흐름 유지)
+# 🚀 메인 처리
 # ----------------------------
 if uploaded_files:
+    uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
+    if not uploaded_files:
+        st.stop()
+
+    # ▶ 실행 시 결과 폴더 자동 초기화
+    reset_output()
+
     output_dir = Path("output_docs")
     output_dir.mkdir(exist_ok=True)
 
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
-    log("파일 업로드 완료")
+    log("[파일 업로드 완료]")
 
-    drafts_text = ""
-    for f in uploaded_files:
-        drafts_text += f"\n\n---\n\n{f.getvalue().decode('utf-8')}"
+    top_clusters = recursive_cluster(uploaded_files)
+    total = len(top_clusters)
+    done = 0
 
-    # ① 병합
-    merged = merge_drafts(drafts_text)
-    progress.progress(30)
-    log("초안 병합 완료")
+    for cluster_files in top_clusters:
+        main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
+        main_folder = output_dir / main_group
+        main_folder.mkdir(parents=True, exist_ok=True)
 
-    # ② 제목/메타
-    keyword = merged.get("core_topic", "")
-    seo_list = generate_titles_meta(keyword, 5)
-    chosen = seo_list[0]
-    progress.progress(60)
-    log("SEO 제목/메타 생성 완료")
+        readme_filename = f"★README_{main_group}.md"
 
-    # ③ 본문
-    blog_md = generate_blog_body(
-        merged,
-        keyword,
-        chosen["title"],
-        chosen["meta_description"],
-    )
-    progress.progress(85)
-    log("본문 리라이트 완료")
+        (main_folder / readme_filename).write_text(
+            generate_readme(main_group, [f.name for f in cluster_files]),
+            encoding="utf-8",
+        )
 
-    (output_dir / "blog_post.md").write_text(blog_md, encoding="utf-8")
-    (output_dir / "seo_titles.json").write_text(
-        json.dumps(seo_list, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+        used_names = set()
+        for sub_files in recursive_cluster(cluster_files):
+            base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
+            sub_group = unique_folder_name(base, used_names)
+            used_names.add(sub_group)
+
+            sub_folder = main_folder / sub_group
+            sub_folder.mkdir(parents=True, exist_ok=True)
+
+            for f in sub_files:
+                (sub_folder / f.name).write_bytes(f.getvalue())
+
+            readme_filename = f"★README_{sub_group}.md"
+
+            (sub_folder / readme_filename).write_text(
+                generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
+                encoding="utf-8",
+            )
+
+        done += 1
+        pct = int(done / total * 100)
+        progress.progress(pct)
+        progress_text.markdown(
+            f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
+            unsafe_allow_html=True
+        )
+        log(f"{main_group} 처리 완료")
 
     zip_path = Path("result_documents.zip")
     with zipfile.ZipFile(zip_path, "w") as z:
-        for f in output_dir.iterdir():
-            z.write(f, f.name)
-
+        for root, _, files in os.walk(output_dir):
+            for f in files:
+                p = os.path.join(root, f)
+                z.write(p, arcname=os.path.relpath(p, output_dir))
+ 
     zip_placeholder.download_button(
         "[ Download ]",
-        open(zip_path, "rb"),
+        open("result_documents.zip", "rb"),
         file_name="result_documents.zip",
         mime="application/zip",
         use_container_width=True,
@@ -434,5 +483,5 @@ if uploaded_files:
 
 else:
     progress_placeholder.progress(0)
-    progress_text.markdown("<div class='status-bar'>[대기 중]</div>", unsafe_allow_html=True)
-    log_box.markdown("<div class='log-box'>대기 중...</div>", unsafe_allow_html=True)
+    progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
+    log_box.markdown("<div class='log-box'>......</div>", unsafe_allow_html=True)
