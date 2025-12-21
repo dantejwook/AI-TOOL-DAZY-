@@ -1,4 +1,4 @@
-# AI DAZY TESTMODE
+# AI DAZY v2512190245_1.1
 
 import streamlit as st
 import zipfile
@@ -645,6 +645,43 @@ if uploaded_files:
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
     log("[파일 업로드 완료]")
+
+    # ==================================================
+    # 📘 카테고리 README 기반 폴더 선생성
+    # ==================================================
+
+    # 1. 업로드된 파일 중 카테고리 README 선택
+    category_readme = next(
+        f for f in uploaded_files
+        if "README" in f.name
+    )
+
+    # 2. README 내용 읽기
+    content = category_readme.getvalue().decode("utf-8")
+    lines = content.splitlines()
+
+    current_main = None
+
+    for line in lines:
+        line = line.strip()
+
+        # 메인 카테고리 (#)
+        if line.startswith("# "):
+            current_main = sanitize_folder_name(
+                line[2:].split("[")[0]
+            )
+            (output_dir / current_main).mkdir(exist_ok=True)
+
+        # 하위 카테고리 (##)
+        elif line.startswith("## ") and current_main:
+            sub = sanitize_folder_name(line[3:])
+            (output_dir / current_main / sub).mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+    log("[카테고리 README 기반 폴더 선생성 완료]")
+
 
     top_clusters = recursive_cluster(uploaded_files)
     total = len(top_clusters)
