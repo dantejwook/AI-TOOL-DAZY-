@@ -197,7 +197,7 @@ body {
 ========================= */
 .log-box {
     background-color: #dbede6;
-    color: var(--text-color);
+    color: #050505;
     padding: 0.8em;
     margin-top: 10px;
     height: 120px;
