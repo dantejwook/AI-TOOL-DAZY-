@@ -735,7 +735,7 @@ if uploaded_files:
 
             # README 생성
             summary = generate_summary_readme(category, sub, files)
-            (sub_folder / f"README_{sanitize_folder_name(sub)}.md").write_text(
+            (sub_folder / f"★README_{sanitize_folder_name(sub)}.md").write_text(
                 summary, encoding="utf-8"
             )
 
