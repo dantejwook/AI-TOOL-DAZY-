@@ -648,7 +648,7 @@ README 요약 파일을 작성하세요.
 """
 
     r = openai.ChatCompletion.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "너는 블로그 카테고리 기반 요약문서를 생성하는 전문가다."},
             {"role": "user", "content": prompt},
