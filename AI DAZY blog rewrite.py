@@ -713,10 +713,13 @@ if uploaded_files:
             sub_folder = main_folder / sub_group
             sub_folder.mkdir(parents=True, exist_ok=True)
 
-            for f in sub_files:
-                (sub_folder / f.name).write_bytes(f.getvalue())
+            # 🔒 README 기반 선생성 폴더 보호
+            if main_folder.exists() and not main_folder.is_dir():
+               raise RuntimeError(f"[폴더 충돌] {main_folder} 는 파일입니다")
 
-            readme_filename = f"★README_{sub_group}.md"
+            main_folder.mkdir(parents=True, exist_ok=True)
+            
+            readme_filename = f"★README_{main_group}.md"
 
             (sub_folder / readme_filename).write_text(
                 generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
