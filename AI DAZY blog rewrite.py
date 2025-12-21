@@ -731,14 +731,14 @@ if uploaded_files:
         generate_readme(main_group, [f.name for f in cluster_files]),
         encoding="utf-8",
     )
-        done += 1
-        pct = int(done / total * 100)
-        progress.progress(pct)
-        progress_text.markdown(
-            f"<div class='status-bar'>| 카테고리 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
-            unsafe_allow_html=True
-        )
-        log(f"{main_group} 처리 완료")
+    done += 1
+    pct = int(done / total * 100)
+    progress.progress(pct)
+    progress_text.markdown(
+        f"<div class='status-bar'>| 카테고리 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
+        unsafe_allow_html=True
+    )
+    log(f"{main_group} 처리 완료")
 
     zip_path = Path("result_documents.zip")
     with zipfile.ZipFile(zip_path, "w") as z:
