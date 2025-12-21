@@ -684,4 +684,4 @@ if uploaded_files:
 else:
     progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
-    log_box.markdown("<div class='log-box'>[   ]</div>", unsafe_allow_html=True)
+    log_box.markdown("<div class='log-box'>......</div>", unsafe_allow_html=True)
