@@ -504,72 +504,117 @@ def create_category_folders(base_dir, category_structure):
 # 🧠 문서 확장 + 임베딩 통합
 # ============================
 
+def embed_texts(texts, batch_size=40):
+    """입력 텍스트 리스트를 OpenAI 임베딩 API로 변환 (대용량/토큰 제한 안전 버전)"""
+    results = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        missing = [t for t in batch if h(t) not in embedding_cache]
+
+        if missing:
+            try:
+                # 각 batch별 임베딩 요청
+                r = openai.Embedding.create(
+                    model="text-embedding-3-large",
+                    input=missing,
+                )
+                for t, d in zip(missing, r["data"]):
+                    embedding_cache[h(t)] = d["embedding"]
+
+                # ✅ 캐시 저장
+                save_cache(EMBED_CACHE, embedding_cache)
+                log(f"🧩 임베딩 batch {i//batch_size + 1} 완료 ({len(batch)}개)")
+            except Exception as e:
+                st.error(f"❌ 임베딩 batch {i//batch_size + 1} 오류: {e}")
+                continue
+
+        # 캐시된 벡터를 순서대로 append
+        results.extend([embedding_cache[h(t)] for t in batch])
+
+    return results
+
+
 def prepare_blog_embeddings(files):
-    """블로그 초안 임베딩 생성 (안전 버전)"""
+    """블로그 초안 임베딩 생성 (방어 버전)"""
     texts, file_objs = [], []
 
     for f in files:
         try:
             text = f.getvalue().decode("utf-8", errors="ignore")
         except Exception:
-            st.warning(f"⚠️ {f.name} 파일을 읽는 중 오류 발생 — 건너뜀")
+            st.warning(f"⚠️ {f.name} 파일 읽기 실패 — 건너뜀")
             continue
 
         title = title_from_filename(f.name)
-        clean_text = re.sub(r"\s+", " ", text.strip())[:4000]
+        clean_text = re.sub(r"\s+", " ", text.strip())[:4000]  # 4000자 제한
         texts.append(f"제목: {title}\n내용: {clean_text}")
         file_objs.append(f)
 
     if not texts:
-        st.error("❌ 분석할 유효한 블로그 문서가 없습니다.")
+        st.error("❌ 업로드된 블로그 초안에서 읽을 수 있는 문서가 없습니다.")
         return {}
 
     vectors = embed_texts(texts)
+
     if not vectors or len(vectors) != len(file_objs):
-        st.error("❌ 임베딩 생성 실패 또는 누락 발생.")
+        st.error(f"❌ 임베딩 생성 실패: {len(vectors)} / 기대값 {len(file_objs)}")
         return {}
 
+    st.write(f"✅ 임베딩 완료: {len(vectors)}개 문서 변환됨.")
     return dict(zip(file_objs, vectors))
+
 
 # ============================
 # 📦 클러스터링 + 자동 재분해 (조건부)
 # ============================
 
 def match_documents_to_categories(embeddings, category_structure):
-    """문서와 카테고리 매칭"""
+    """문서와 카테고리 매칭 (방어 + 디버그 버전)"""
 
-    # ✅ 1단계: embeddings 유효성 확인
+    # ✅ 1단계: 임베딩 유효성 검사
     if not embeddings or not isinstance(embeddings, dict):
-        st.error("❌ 임베딩 데이터가 비어 있거나 올바르지 않습니다.")
-        st.write(f"⚙️ embeddings 상태: {type(embeddings)} / 길이: {len(embeddings) if embeddings else 0}")
+        st.error("❌ 임베딩 데이터가 비어 있거나 잘못되었습니다.")
+        st.write(f"⚙️ embeddings 타입: {type(embeddings)} / 길이: {len(embeddings) if embeddings else 0}")
         return {}
 
-    # ✅ 2단계: 실제 값 확인용 (디버그 로그)
     try:
-        sample_keys = list(embeddings.keys())[:3]
-        st.write(f"📊 유효한 임베딩 {len(embeddings)}개 감지됨 — 예시: {[f.name for f in sample_keys]}")
-    except Exception as e:
-        st.warning(f"⚠️ 임베딩 내용 확인 중 오류: {e}")
-        return {}
-        
+        sample_names = [f.name for f in list(embeddings.keys())[:3]]
+        st.write(f"📊 임베딩 샘플: {sample_names}")
+    except Exception:
+        st.warning("⚠️ 임베딩 키 샘플 표시 중 오류 (무시 가능)")
+
     all_topics = []
     for c in category_structure:
-        for sub in c["subtopics"]:
+        for sub in c.get("subtopics", []):
             all_topics.append((c["category"], sub))
+
+    if not all_topics:
+        st.error("❌ 카테고리 구조에 subtopics가 없습니다. README 파일 확인 필요.")
+        return {}
 
     topic_texts = [f"{cat} - {sub}" for cat, sub in all_topics]
     topic_embeddings = embed_texts(topic_texts)
 
+    if not topic_embeddings or len(topic_embeddings) != len(all_topics):
+        st.error("❌ 카테고리 주제 임베딩 실패.")
+        return {}
+
+    # ✅ 안전하게 numpy 배열 생성
+    try:
+        doc_vecs = np.array(list(embeddings.values()), dtype=float)
+    except Exception as e:
+        st.error(f"❌ 문서 임베딩 배열 변환 중 오류: {e}")
+        return {}
+
+    sim = cosine_similarity(doc_vecs, np.array(topic_embeddings))
     match_results = {cat: {sub: [] for sub in [s for _, s in all_topics if _ == cat]} for cat, _ in all_topics}
 
-    doc_vecs = np.array(list(embeddings.values()))
-    sim = cosine_similarity(doc_vecs, np.array(topic_embeddings))
-
     for i, (file_obj, _) in enumerate(embeddings.items()):
-        best_idx = np.argmax(sim[i])
+        best_idx = int(np.argmax(sim[i]))
         cat, sub = all_topics[best_idx]
         match_results[cat][sub].append(file_obj)
 
+    st.success("✅ 문서-카테고리 매핑 완료.")
     return match_results
 
 # ============================
