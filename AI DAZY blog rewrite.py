@@ -562,7 +562,7 @@ def prepare_blog_embeddings(files):
         st.error(f"❌ 임베딩 생성 실패: {len(vectors)} / 기대값 {len(file_objs)}")
         return {}
 
-    st.success(f"✅ 임베딩 완료: {len(vectors)}개 문서 변환됨.")
+    st.writing(f"✅ 임베딩 완료: {len(vectors)}개 문서 변환됨.")
     return dict(zip(file_objs, vectors))
 
 
@@ -616,7 +616,7 @@ def match_documents_to_categories(embeddings, category_structure):
         cat, sub = all_topics[best_idx]
         match_results[cat][sub].append(file_obj)
 
-    st.success("✅ 문서-카테고리 매핑 완료.")
+    st.writing("✅ 문서-카테고리 매핑 완료.")
     return match_results
 
 # ============================
