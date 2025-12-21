@@ -730,30 +730,30 @@ if uploaded_files:
 
     temp_files = [TempFile(f) for f in draft_files]
 
-total = len(temp_files)
-done = 0
-pct = 30
+    total = len(temp_files)
+    done = 0
+    pct = 30
 
-progress.progress(pct)
-progress_text.markdown(
-    f"<div class='status-bar'>| 카테고리 분석중… | [ {pct}%  ({done} / {total} file) ]</div>",
-    unsafe_allow_html=True
-)
+    progress.progress(pct)
+    progress_text.markdown(
+        f"<div class='status-bar'>| 카테고리 분석중… | [ {pct}%  ({done} / {total} file) ]</div>",
+        unsafe_allow_html=True
+    )
 
-build_structure(
-    base_dir=output_dir,
-    category_title=category_file.name.rsplit(".", 1)[0],
-    category_readme_text=category_text,
-    files=temp_files,
-)
+    build_structure(
+        base_dir=output_dir,
+        category_title=category_file.name.rsplit(".", 1)[0],
+        category_readme_text=category_text,
+        files=temp_files,
+    )
 
-done = total
-pct = 80
-progress.progress(pct)
-progress_text.markdown(
-    f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
-    unsafe_allow_html=True
-)
+    done = total
+    pct = 80
+    progress.progress(pct)
+    progress_text.markdown(
+        f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
+        unsafe_allow_html=True
+    )
 
 
     # 🔹 ZIP 생성
