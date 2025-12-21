@@ -459,37 +459,37 @@ def embed_texts(texts, batch_size=50):
 
 def load_category_structure(readme_file):
     text = readme_file.getvalue().decode("utf-8")
+
     prompt = f"""
 다음은 블로그 카테고리 및 세부 주제 정리 문서입니다.
-이 문서를 JSON 트리 구조로 변환하세요.
+JSON 배열로만 출력하세요. 아래 형식을 반드시 지켜야 합니다.
 
-출력 예시:
 [
-  {{"category": "시장 이해 & 트렌드", "subtopics": ["뷰티업계 산업 트렌드", "국내 뷰티업계 트렌드 변화"]}},
-  {{"category": "국내외 뷰티업계 핫이슈", "subtopics": ["정책·규제·시장 이슈"]}}
+  {{"category": "시장 이해 & 트렌드", "subtopics": ["뷰티업계 산업 트렌드", "국내 트렌드 변화"]}},
+  {{"category": "국내외 이슈", "subtopics": ["정책 이슈", "시장 규제"]}}
 ]
 
-⚠️ 반드시 각 카테고리에 "subtopics" 리스트를 포함하세요.
-⚠️ 카테고리 이름이 같더라도 병합하지 말고 모두 나열하세요.
-⚠️ JSON 이외의 설명 문장은 절대 포함하지 마세요.
-
+⚠️ 주석, 설명, 텍스트 문장 포함 금지.
 문서:
 {text}
 """
 
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "너는 문서를 JSON 구조로 파싱하는 전문가다."},
-            {"role": "user", "content": prompt + "\n" + text}
-        ],
-        temperature=0
-    )
-
     try:
-        return json.loads(r["choices"][0]["message"]["content"])
-    except Exception:
-        st.error("카테고리 구조를 파싱하는 중 오류가 발생했습니다.")
+        r = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "너는 JSON 데이터만 반환해야 한다."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0
+        )
+
+        content = r["choices"][0]["message"]["content"]
+        json_str = re.search(r'\[.*\]', content, re.S)
+        return json.loads(json_str.group(0)) if json_str else []
+
+    except Exception as e:
+        st.error(f"❌ 카테고리 구조 파싱 실패: {e}")
         return []
 
 # ============================
