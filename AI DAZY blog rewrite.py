@@ -1,4 +1,5 @@
-# AI DAZY testmode
+# AI DAZY TESTMODE
+
 import streamlit as st
 import zipfile
 import os
@@ -30,7 +31,7 @@ TOKEN_EXPIRE_HOURS = 3
 # 🌈 기본 페이지 설정
 # ----------------------------
 st.set_page_config(
-    page_title="AI dazy test mode",
+    page_title="AI dazy document sorter",
     page_icon="🗂️",
     layout="wide",
 )
@@ -327,8 +328,8 @@ st.sidebar.markdown(
     """
 - 📁 파일을 **업로드하면 자동으로 시작** 됩니다.
 - 📂 **여러 문서를 한 번에 업로드**할 수 있습니다.
-- 🧠 문서는 **AI가 하나의 블로그 글로 병합**합니다.
-- ✍️ SEO 제목 / 메타 / 본문을 자동 생성합니다.
+- 🧠 문서는 **AI가 자동으로 주제별 분류**합니다.
+- 📁 폴더 수가 많으면 **자동으로 하위 폴더로 분해**됩니다.
 - ⏳ 문서 수가 많을수록 처리 시간이 늘어납니다.
 - 📦 완료 후 **ZIP 파일로 한 번에 다운로드**할 수 있습니다.
 """
@@ -392,8 +393,7 @@ def log(msg):
 def h(t: str):
     return hashlib.sha256(t.encode("utf-8")).hexdigest()
 
-
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------
 
 # ============================
 # ✨ 유틸
@@ -439,7 +439,7 @@ def expand_document_with_gpt(file):
 
 ❗중요 규칙
 - 새로운 카테고리나 주제를 만들지 마라
-- README에 존재하는 표현 기준으로만 해석하라
+- README에 존재하는 카테고리 기준으로만 해석하라
 - 분류나 그룹핑은 하지 말고 의미 정보만 추출하라
 - 요약문 작성 금지
 
@@ -524,6 +524,7 @@ def embed_texts(texts):
 # 📦 클러스터링
 # ----------------------------
 def cluster_documents(files):
+    # ⭐ 변경: 0차 EXPAND 병렬 적용
     expanded = expand_documents_parallel(files, max_workers=5)
     vectors = embed_texts([e["embedding_text"] for e in expanded])
     return HDBSCAN(min_cluster_size=3, min_samples=1).fit_predict(vectors)
@@ -574,7 +575,7 @@ def generate_group_name(names):
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "너는 기존 블로그 카테고리명을 그대로 선택한다."},
+            {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
             {"role": "user", "content": prompt + "\n" + "\n".join(names)},
         ],
         temperature=0.3,
@@ -593,7 +594,6 @@ def generate_readme(topic, files, auto_split=False):
     notice = AUTO_SPLIT_NOTICE if auto_split else ""
 
     prompt = f"""
-{notice}
 다음 문서들은
 [블로그 카테고리 및 세부 주제가 정리된 README]에 정의된
 '{topic}' 주제로 분류된 글들이다.
@@ -610,6 +610,7 @@ def generate_readme(topic, files, auto_split=False):
 - 설명형 문단 위주
 - 반드시 한국어로 작성
 
+
 문서 목록:
 {chr(10).join(files)}
 """
@@ -617,7 +618,7 @@ def generate_readme(topic, files, auto_split=False):
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "너는 블로그 카테고리 요약용 README를 작성한다."},
+            {"role": "system", "content": "너는 한국어로만 README를 작성한다."},
             {"role": "user", "content": prompt},
         ],
     )
@@ -635,6 +636,7 @@ if uploaded_files:
     if not uploaded_files:
         st.stop()
 
+    # ▶ 실행 시 결과 폴더 자동 초기화
     reset_output()
 
     output_dir = Path("output_docs")
@@ -683,7 +685,7 @@ if uploaded_files:
         pct = int(done / total * 100)
         progress.progress(pct)
         progress_text.markdown(
-            f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
+            f"<div class='status-bar'>| 카테고리 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
             unsafe_allow_html=True
         )
         log(f"{main_group} 처리 완료")
@@ -694,7 +696,7 @@ if uploaded_files:
             for f in files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
-
+ 
     zip_placeholder.download_button(
         "[ Download ]",
         open("result_documents.zip", "rb"),
@@ -708,9 +710,7 @@ if uploaded_files:
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
 
-
-
-
+#----------------------------------------------------------------------------------------------------------
 
 else:
     progress_placeholder.progress(0)
