@@ -693,11 +693,18 @@ if uploaded_files:
     done = 0
 
     for cluster_files in top_clusters:
-        main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
-        main_folder = output_dir / main_group
-        main_folder.mkdir(parents=True, exist_ok=True)
+        main_group = generate_group_name(
+        [f.name.rsplit(".", 1)[0] for f in cluster_files]
+    )
+    main_folder = output_dir / main_group
 
-        readme_filename = f"★README_{main_group}.md"
+    # 🚫 README 기반 선생성 구조에서는 mkdir 하면 안 됨
+    if not main_folder.exists():
+        raise RuntimeError(
+            f"[구조 오류] README에 정의되지 않은 폴더: {main_group}"
+        )
+
+    readme_filename = f"★README_{main_group}.md"
 
         (main_folder / readme_filename).write_text(
             generate_readme(main_group, [f.name for f in cluster_files]),
