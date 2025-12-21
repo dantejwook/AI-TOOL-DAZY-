@@ -395,80 +395,101 @@ def h(t: str):
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# ============================ #
+import os
+import re
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import openai
+
+# =====================================================
+# ⚠️ 외부에서 이미 존재한다고 가정
+# =====================================================
+# h(text) -> hash
+# expand_cache, save_cache, EXPAND_CACHE
+# (기존 코드 그대로 사용)
+
+
+# =====================================================
 # ✨ 유틸
-# ============================
+# =====================================================
 
 def sanitize_folder_name(name: str) -> str:
     name = (name or "").strip()
-    name = re.sub(r"[^\w가-힣\s]", "", name)
+    name = re.sub(r"[^\w가-힣\s\[\]]", "", name)
     name = re.sub(r"\s+", "_", name)
     return name.strip("_") or "기타_문서"
-
-
-def unique_folder_name(base: str, existing: set) -> str:
-    if base not in existing:
-        return base
-    i = 1
-    while f"{base}_{i}" in existing:
-        i += 1
-    return f"{base}_{i}"
 
 
 def title_from_filename(file_name: str) -> str:
     base = file_name.rsplit(".", 1)[0]
     base = re.sub(r"[_\-]+", " ", base)
-    base = re.sub(r"\s+", " ", base).strip()
-    return base
+    return re.sub(r"\s+", " ", base).strip()
 
 
-# ============================ #
-# 🧠 0차 GPT EXPAND
-# ============================
+def build_readme_header(folder_path: str) -> str:
+    return f"""<!--
+README_소속_폴더: {folder_path}
+-->
+"""
 
-def expand_document_with_gpt(file):
-    key = h(file.name)
+
+def readme_filename(folder_name: str, is_gap_report=False) -> str:
+    if is_gap_report:
+        return f"★README_{folder_name}_보강_리포트.md"
+    return f"★README_{folder_name}.md"
+
+
+# =====================================================
+# 🧠 GPT EXPAND (카테고리 기준 의미 분석)
+# =====================================================
+
+def expand_document_with_gpt(file, category_readme_text):
+    key = h(file.name + category_readme_text)
     if key in expand_cache:
         return expand_cache[key]
 
-    fallback_title = title_from_filename(file.name)
+    fallback = title_from_filename(file.name)
 
     prompt = f"""
-다음 문서를 분류하기 쉽게 의미적으로 정규화하라.
-분류나 그룹핑은 하지 말고, 의미만 추출하라.
-출력은 반드시 JSON 하나만 출력한다.
+너는 블로그 콘텐츠 분류를 위한 의미 분석기다.
 
-형식:
+[블로그 카테고리 및 세부 주제 기준]
+{category_readme_text}
+
+[분석 대상 블로그 초안]
+파일명: {file.name}
+
+출력(JSON 하나만):
 {{
   "canonical_title": "...",
-  "keywords": ["...", "..."],
-  "domain": "...",
+  "parent_category": "대분류 카테고리명",
+  "sub_topic": "세부 주제명",
+  "relation_reason": "주제와의 연관성",
+  "synergy": "같이 묶일 때의 시너지",
+  "goal_alignment": "공통 목표 방향성",
   "embedding_text": "..."
 }}
-
-문서 파일명: {file.name}
 """
 
     try:
         r = openai.ChatCompletion.create(
             model="gpt-5-nano",
             messages=[
-                {"role": "system", "content": "너는 문서를 분류하기 쉽게 정규화하는 역할이다."},
+                {"role": "system", "content": "너는 블로그 콘텐츠 분석기다."},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
         )
-
         data = json.loads(r["choices"][0]["message"]["content"])
-        if "embedding_text" not in data:
-            raise ValueError
-
     except Exception:
         data = {
-            "canonical_title": fallback_title,
-            "keywords": fallback_title.split(),
-            "domain": "기타",
-            "embedding_text": f"제목: {fallback_title}",
+            "canonical_title": fallback,
+            "parent_category": "기타",
+            "sub_topic": "기타",
+            "relation_reason": "",
+            "synergy": "",
+            "goal_alignment": "",
+            "embedding_text": fallback,
         }
 
     expand_cache[key] = data
@@ -476,164 +497,205 @@ def expand_document_with_gpt(file):
     return data
 
 
-# ============================ #
-# ⭐ 0차 EXPAND 병렬 처리
-# ============================
-
-def expand_documents_parallel(files, max_workers=5):
+def expand_documents_parallel(files, category_readme_text, max_workers=5):
     results = {}
-
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(expand_document_with_gpt, f): f
+            executor.submit(expand_document_with_gpt, f, category_readme_text): f
             for f in files
         }
-
         for future in as_completed(futures):
             f = futures[future]
-            try:
-                results[f] = future.result()
-            except Exception:
-                fallback_title = title_from_filename(f.name)
-                results[f] = {
-                    "canonical_title": fallback_title,
-                    "keywords": fallback_title.split(),
-                    "domain": "기타",
-                    "embedding_text": f"제목: {fallback_title}",
-                }
-
-    return [results[f] for f in files]
+            results[f] = future.result()
+    return results
 
 
-# ============================ #
-# ✨ 임베딩
-# ============================
+# =====================================================
+# 📄 README 생성
+# =====================================================
 
-def embed_texts(texts):
-    missing = [t for t in texts if h(t) not in embedding_cache]
-
-    if missing:
-        r = openai.Embedding.create(
-            model="text-embedding-3-large",
-            input=missing,
-        )
-
-        for t, d in zip(missing, r["data"]):
-            embedding_cache[h(t)] = d["embedding"]
-
-        save_cache(EMBED_CACHE, embedding_cache)
-
-    return [embedding_cache[h(t)] for t in texts]
-
-
-# ============================ #
-# 📦 클러스터링
-# ============================
-
-def cluster_documents(files):
-    expanded = expand_documents_parallel(files, max_workers=5)
-    vectors = embed_texts([e["embedding_text"] for e in expanded])
-
-    return HDBSCAN(
-        min_cluster_size=3,
-        min_samples=1
-    ).fit_predict(vectors)
-
-
-# ============================ #
-# 🔁 자동 재분해
-# ============================
-
-def recursive_cluster(files, depth=0):
-    if len(files) <= MAX_FILES_PER_CLUSTER or depth >= MAX_RECURSION_DEPTH:
-        return [files]
-
-    labels = cluster_documents(files)
-    groups = {}
-
-    for f, l in zip(files, labels):
-        groups.setdefault(l, []).append(f)
-
-    result = []
-    for g in groups.values():
-        if len(g) > MAX_FILES_PER_CLUSTER:
-            result.extend(recursive_cluster(g, depth + 1))
-        else:
-            result.append(g)
-
-    return result
-
-
-# ============================ #
-# ✨ GPT 폴더명 / README
-# ============================
-
-def generate_group_name(names):
-    k = h("||".join(sorted(names)))
-    if k in group_cache:
-        return group_cache[k]
-
-    prompt = """
-다음 문서 제목들의 공통 주제를 대표하는
-짧고 명확한 한글 폴더명 하나만 출력하세요.
-
-규칙:
-- 2~4 단어
-- 조사 사용 금지
-- 숫자/번호 금지
-- 설명 금지
-"""
-
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "너는 한글 폴더명만 생성한다."},
-            {"role": "user", "content": prompt + "\n" + "\n".join(names)},
-        ],
-        temperature=0.3,
-    )
-
-    name = sanitize_folder_name(r["choices"][0]["message"]["content"])
-    group_cache[k] = name
-    save_cache(GROUP_CACHE, group_cache)
-    return name
-
-
-def generate_readme(topic, files, auto_split=False):
-    k = h(
-        ("split" if auto_split else "nosplit")
-        + topic
-        + "||"
-        + "||".join(sorted(files))
-    )
-
-    if k in readme_cache:
-        return readme_cache[k]
-
-    notice = AUTO_SPLIT_NOTICE if auto_split else ""
+def generate_topic_readme(category_title, topic, metas, folder_path):
+    header = build_readme_header(folder_path)
+    titles = [m["canonical_title"] for m in metas]
 
     prompt = f"""
-{notice}
-다음 문서들은 '{topic}' 주제로 분류된 자료입니다.
-각 문서의 관계와 활용 목적을 설명하는 README.md를 작성하세요.
-반드시 한국어로 작성하세요.
+카테고리 '{category_title}'의 세부 주제 '{topic}'에 속한 글들이다.
 
-문서 목록:
-{chr(10).join(files)}
+README를 작성하라.
+
+반드시 포함:
+- 주제 설명
+- 각 글과의 연관성
+- 글들 간 시너지
+- 공통 목표 방향성
+
+글 목록:
+{chr(10).join(titles)}
 """
 
     r = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "너는 한국어로만 README를 작성한다."},
+            {"role": "system", "content": "너는 한국어로 README를 작성한다."},
             {"role": "user", "content": prompt},
         ],
     )
 
-    content = notice + r["choices"][0]["message"]["content"].strip()
-    readme_cache[k] = content
-    save_cache(README_CACHE, readme_cache)
-    return content
+    return header + "\n" + r["choices"][0]["message"]["content"].strip()
+
+
+# =====================================================
+# 📄 카테고리 → 기대 주제 추출
+# =====================================================
+
+def extract_expected_topics(category_readme_text):
+    prompt = f"""
+다음 문서에서 대분류와 세부 주제를 구조적으로 추출하라.
+JSON만 출력하라.
+
+형식:
+{{ "대분류": ["세부주제1", "세부주제2"] }}
+
+문서:
+{category_readme_text}
+"""
+
+    r = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 문서 구조 분석기다."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.1,
+    )
+
+    return json.loads(r["choices"][0]["message"]["content"])
+
+
+def collect_actual_topics(expanded_docs):
+    result = {}
+    for meta in expanded_docs.values():
+        result.setdefault(meta["parent_category"], set()).add(meta["sub_topic"])
+    return {k: sorted(v) for k, v in result.items()}
+
+
+def find_missing_topics(expected, actual):
+    gaps = {}
+    for parent, exp in expected.items():
+        act = set(actual.get(parent, []))
+        missing = [t for t in exp if t not in act]
+        if missing:
+            gaps[parent] = {
+                "expected": exp,
+                "actual": list(act),
+                "missing": missing,
+            }
+    return gaps
+
+
+def generate_gap_report_readme(category_title, gap_report, folder_path):
+    header = build_readme_header(folder_path)
+
+    prompt = f"""
+블로그 카테고리 '{category_title}'의 콘텐츠 보강 리포트를 작성하라.
+
+포함:
+1. 현재 구성 요약
+2. 부족한 세부 주제
+3. 왜 중요한지
+4. 보강 전략
+
+데이터:
+{json.dumps(gap_report, ensure_ascii=False, indent=2)}
+"""
+
+    r = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 블로그 전략 컨설턴트다."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+
+    return header + "\n" + r["choices"][0]["message"]["content"].strip()
+
+
+# =====================================================
+# 📁 전체 구조 생성 (엔트리 포인트)
+# =====================================================
+
+def build_structure(base_dir, category_title, category_readme_text, files):
+    expanded = expand_documents_parallel(files, category_readme_text)
+
+    root_name = f"폴더_{sanitize_folder_name(category_title)}"
+    root_dir = os.path.join(base_dir, root_name)
+    os.makedirs(root_dir, exist_ok=True)
+
+    grouped = {}
+    for file, meta in expanded.items():
+        grouped.setdefault(
+            (meta["parent_category"], meta["sub_topic"]),
+            []
+        ).append((file, meta))
+
+    # 🔹 주제 폴더 + README
+    for (parent, topic), items in grouped.items():
+        parent_name = f"하위폴더_{sanitize_folder_name(parent)}"
+        topic_name = f"주제_{sanitize_folder_name(topic)}"
+
+        parent_dir = os.path.join(root_dir, parent_name)
+        topic_dir = os.path.join(parent_dir, topic_name)
+        os.makedirs(topic_dir, exist_ok=True)
+
+        metas = []
+        for file, meta in items:
+            os.rename(file.path, os.path.join(topic_dir, file.name))
+            metas.append(meta)
+
+        folder_path = f"{root_name} / {parent_name} / {topic_name}"
+        readme = generate_topic_readme(
+            category_title,
+            topic,
+            metas,
+            folder_path
+        )
+
+        with open(
+            os.path.join(topic_dir, readme_filename(topic_name)),
+            "w",
+            encoding="utf-8"
+        ) as f:
+            f.write(readme)
+
+    # 🔹 최상위 README
+    top_header = build_readme_header(root_name)
+    with open(
+        os.path.join(root_dir, readme_filename(root_name)),
+        "w",
+        encoding="utf-8"
+    ) as f:
+        f.write(top_header + f"\n# {category_title}\n")
+
+    # 🔹 보강 리포트
+    expected = extract_expected_topics(category_readme_text)
+    actual = collect_actual_topics(expanded)
+    gaps = find_missing_topics(expected, actual)
+
+    if gaps:
+        gap_readme = generate_gap_report_readme(
+            category_title,
+            gaps,
+            root_name
+        )
+        with open(
+            os.path.join(
+                root_dir,
+                readme_filename(root_name, is_gap_report=True)
+            ),
+            "w",
+            encoding="utf-8"
+        ) as f:
+            f.write(gap_readme)
 
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
