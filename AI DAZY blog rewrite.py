@@ -730,19 +730,31 @@ if uploaded_files:
 
     temp_files = [TempFile(f) for f in draft_files]
 
-    progress.progress(30)
-    progress_text.markdown("<div class='status-bar'>| 카테고리 분석중… | [ {pct}%  ({done} / {total} file) ]</div>", unsafe_allow_html=True)
+total = len(temp_files)
+done = 0
+pct = 30
 
-    # 🔹 핵심 처리 (한 번만 호출)
-    build_structure(
-        base_dir=output_dir,
-        category_title=category_file.name.rsplit(".", 1)[0],
-        category_readme_text=category_text,
-        files=temp_files,
-    )
+progress.progress(pct)
+progress_text.markdown(
+    f"<div class='status-bar'>| 카테고리 분석중… | [ {pct}%  ({done} / {total} file) ]</div>",
+    unsafe_allow_html=True
+)
 
-    progress.progress(80)
-    progress_text.markdown("<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>", unsafe_allow_html=True)
+build_structure(
+    base_dir=output_dir,
+    category_title=category_file.name.rsplit(".", 1)[0],
+    category_readme_text=category_text,
+    files=temp_files,
+)
+
+done = total
+pct = 80
+progress.progress(pct)
+progress_text.markdown(
+    f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
+    unsafe_allow_html=True
+)
+
 
     # 🔹 ZIP 생성
     zip_path = Path("result_documents.zip")
