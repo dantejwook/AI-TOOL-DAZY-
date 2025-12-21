@@ -701,14 +701,13 @@ def build_structure(base_dir, category_title, category_readme_text, files):
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------
-# 🚀 메인 처리
+# 🚀 메인 처리 (카테고리 기준 버전)
 # ----------------------------
 if uploaded_files:
     uploaded_files = [f for f in uploaded_files if f and f.name.strip()]
     if not uploaded_files:
         st.stop()
 
-    # ▶ 실행 시 결과 폴더 자동 초기화
     reset_output()
 
     output_dir = Path("output_docs")
@@ -716,62 +715,60 @@ if uploaded_files:
 
     progress = progress_placeholder.progress(0)
     progress_text.markdown("<div class='status-bar'>[0%]</div>", unsafe_allow_html=True)
+
     log("[파일 업로드 완료]")
 
-    top_clusters = recursive_cluster(uploaded_files)
-    total = len(top_clusters)
-    done = 0
+    # 🔹 카테고리 README / 초안 분리
+    category_file = None
+    draft_files = []
 
-    for cluster_files in top_clusters:
-        main_group = generate_group_name([f.name.rsplit(".", 1)[0] for f in cluster_files])
-        main_folder = output_dir / main_group
-        main_folder.mkdir(parents=True, exist_ok=True)
+    for f in uploaded_files:
+        if "README" in f.name:
+            category_file = f
+        else:
+            draft_files.append(f)
 
-        readme_filename = f"★README_{main_group}.md"
+    if not category_file or not draft_files:
+        st.error("카테고리 README 1개와 블로그 초안 파일들이 필요합니다.")
+        st.stop()
 
-        (main_folder / readme_filename).write_text(
-            generate_readme(main_group, [f.name for f in cluster_files]),
-            encoding="utf-8",
-        )
+    category_text = category_file.getvalue().decode("utf-8")
 
-        used_names = set()
-        for sub_files in recursive_cluster(cluster_files):
-            base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
-            sub_group = unique_folder_name(base, used_names)
-            used_names.add(sub_group)
+    # 🔹 임시 파일 객체 생성 (기존 코드 호환)
+    class TempFile:
+        def __init__(self, f):
+            self.name = f.name
+            self.path = output_dir / f.name
+            self._data = f.getvalue()
+            self.path.write_bytes(self._data)
 
-            sub_folder = main_folder / sub_group
-            sub_folder.mkdir(parents=True, exist_ok=True)
+    temp_files = [TempFile(f) for f in draft_files]
 
-            for f in sub_files:
-                (sub_folder / f.name).write_bytes(f.getvalue())
+    progress.progress(30)
+    progress_text.markdown("<div class='status-bar'>[30%] 카테고리 분석 중…</div>", unsafe_allow_html=True)
 
-            readme_filename = f"★README_{sub_group}.md"
+    # 🔹 핵심 처리 (한 번만 호출)
+    build_structure(
+        base_dir=output_dir,
+        category_title=category_file.name.rsplit(".", 1)[0],
+        category_readme_text=category_text,
+        files=temp_files,
+    )
 
-            (sub_folder / readme_filename).write_text(
-                generate_readme(f"{main_group} - {sub_group}", [f.name for f in sub_files]),
-                encoding="utf-8",
-            )
+    progress.progress(80)
+    progress_text.markdown("<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>", unsafe_allow_html=True)
 
-        done += 1
-        pct = int(done / total * 100)
-        progress.progress(pct)
-        progress_text.markdown(
-            f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
-            unsafe_allow_html=True
-        )
-        log(f"{main_group} 처리 완료")
-
+    # 🔹 ZIP 생성
     zip_path = Path("result_documents.zip")
     with zipfile.ZipFile(zip_path, "w") as z:
         for root, _, files in os.walk(output_dir):
             for f in files:
                 p = os.path.join(root, f)
                 z.write(p, arcname=os.path.relpath(p, output_dir))
- 
+
     zip_placeholder.download_button(
         "[ Download ]",
-        open("result_documents.zip", "rb"),
+        open(zip_path, "rb"),
         file_name="result_documents.zip",
         mime="application/zip",
         use_container_width=True,
@@ -781,6 +778,7 @@ if uploaded_files:
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
+
 
 else:
     progress_placeholder.progress(0)
