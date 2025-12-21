@@ -562,7 +562,7 @@ def prepare_blog_embeddings(files):
         st.error(f"❌ 임베딩 생성 실패: {len(vectors)} / 기대값 {len(file_objs)}")
         return {}
 
-    st.write(f"✅ 임베딩 완료: {len(vectors)}개 문서 변환됨.")
+    st.success(f"✅ 임베딩 완료: {len(vectors)}개 문서 변환됨.")
     return dict(zip(file_objs, vectors))
 
 
