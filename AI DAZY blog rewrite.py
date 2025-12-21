@@ -339,47 +339,26 @@ st.sidebar.markdown(
 # ============================
 # 📁 메인 UI
 # ============================
+
 left_col, right_col = st.columns([1, 1])
-# ==========================================================
-# 📁 파일 업로드 (자동 실행)
-# ==========================================================
-st.subheader("📂 파일 업로드")
-uploaded_files = st.file_uploader(
-    "README.md 1개 + 블로그 초안 여러 개 (.md, .txt, .pdf)",
-    accept_multiple_files=True,
-    type=["md", "txt", "pdf"]
-)
 
-def log(msg):
-    logs.append(msg)
-    log_box.markdown("<div style='background:#F7F9FB;padding:1em;border-radius:8px;font-size:0.9em;'>"
-                     + "<br>".join(logs[-10:]) + "</div>", unsafe_allow_html=True)
-
-if uploaded_files:
-    readme_file = next((f for f in uploaded_files if "README" in f.name), None)
-    content_files = [f for f in uploaded_files if f is not readme_file]
-
-    if not readme_file:
-        st.error("⚠️ README 파일이 포함되어야 합니다.")
-    elif not content_files:
-        st.warning("⚠️ 블로그 초안 파일을 업로드하세요.")
+if st.button("🚀 실행", use_container_width=True):
+    if not api_key or not readme_file or not content_files:
+        st.warning("README 파일, 초안 파일을 모두 업로드하세요.")
     else:
-        with st.spinner("AI가 문서를 분석하고 있습니다..."):
-            result_zip = process_documents(readme_file, content_files, log, progress_bar)
-        st.success("✅ 문서 분류 완료! 아래 버튼으로 다운로드하세요.")
-        st.download_button(
-            "📦 결과 ZIP 다운로드",
-            open(result_zip, "rb"),
-            file_name="AI_Blog_Sorted.zip"
-        )
-
+        with st.spinner("AI가 문서를 분석하고 있습니다... 잠시만요!"):
+            result_zip = process_documents(readme_file, content_files, api_key)
+            st.success("✅ 처리 완료! 아래에서 ZIP을 다운로드하세요.")
+            st.download_button("📦 결과 ZIP 다운로드", open(result_zip, "rb"), file_name="AI_Blog_Sorted.zip")
 
 st.subheader("AI auto file analyzer")
 st.caption("문서를 분석하고 자동으로 구조화합니다")
 
 with left_col:
     st.subheader("File upload")
-    uploaded_files = st.file_uploader(
+    readme_file = st.file_uploader"📘 블로그 카테고리 README 파일 업로드", type=["md"]
+    content_files = st.file_uploader"📄 블로그 초안 파일 업로드 (복수 가능)", accept_multiple_files=True
+    (
         "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
@@ -407,6 +386,7 @@ with right_col:
     st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
     zip_placeholder = st.empty()   # 👈 위에 두고
+
 
 # ============================
 # ⚙️ 상태 / 로그
