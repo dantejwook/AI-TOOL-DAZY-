@@ -700,7 +700,7 @@ if uploaded_files:
 
     # 🚫 README 기반 선생성 구조에서는 mkdir 하면 안 됨
     if not main_folder.exists():
-        raise RuntimeError(
+         raise RuntimeError(
             f"[구조 오류] README에 정의되지 않은 폴더: {main_group}"
         )
 
