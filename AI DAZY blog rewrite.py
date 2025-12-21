@@ -749,13 +749,13 @@ if uploaded_files:
             unsafe_allow_html=True
         )
 
-    build_structure(
-        base_dir=output_dir,
-        category_title=category_file.name.rsplit(".", 1)[0],
-        category_readme_text=category_text,
-        files=temp_files,
-        progress_cb=progress_cb,   # ✅ 추가
-    )
+        build_structure(
+            base_dir=output_dir,
+            category_title=category_file.name.rsplit(".", 1)[0],
+            category_readme_text=category_text,
+            files=temp_files,
+            progress_cb=progress_cb,   # ✅ 추가
+        )
 
     done = total
     pct = 80
