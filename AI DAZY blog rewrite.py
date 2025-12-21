@@ -721,9 +721,9 @@ if uploaded_files:
         sub_folder = main_folder / sub_group
         sub_folder.mkdir(parents=True, exist_ok=True)
 
-            # 🔒 README 기반 선생성 폴더 보호
-            if main_folder.exists() and not main_folder.is_dir():
-               raise RuntimeError(f"[폴더 충돌] {main_folder} 는 파일입니다")
+        # 🔒 README 기반 선생성 폴더 보호
+        if main_folder.exists() and not main_folder.is_dir():
+           raise RuntimeError(f"[폴더 충돌] {main_folder} 는 파일입니다")
 
             main_folder.mkdir(parents=True, exist_ok=True)
             
