@@ -555,41 +555,53 @@ def recursive_cluster(files, depth=0):
 # ----------------------------
 # ✨ GPT 폴더명 / README
 # ----------------------------
-def generate_group_name(names):
+import difflib
+
+def generate_group_name(names, base_dir="output_docs"):
     k = h("||".join(sorted(names)))
     if k in group_cache:
         return group_cache[k]
 
+    # 실제 존재하는 디렉터리만
+    options = [d for d in os.listdir(base_dir) if (Path(base_dir) / d).is_dir()]
+    if not options:
+        options = ["기타_문서"]
+
     prompt = f"""
-다음 문서들은 이미 생성된 블로그 카테고리 폴더 중
-하나에 반드시 속한다.
+아래 목록에서 반드시 '정확히 하나'만 고르세요. 목록에 없는 값은 금지.
+반드시 목록의 철자 그대로만 출력하세요. 설명, 따옴표, 번호 모두 금지.
 
-규칙:
-- 새로운 이름을 만들지 마라
-- 반드시 아래 폴더명 중 하나만 그대로 선택하라
-- 가장 관련성이 높은 하나만 선택하라
-- 출력은 폴더명 하나만
-
-선택 가능한 폴더 목록:
-{chr(10).join(os.listdir("output_docs"))}
+가능한 폴더 목록:
+{chr(10).join(options)}
 
 문서 제목:
 {chr(10).join(names)}
 """
 
-    r = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "너는 기존 폴더명 중 하나만 선택하는 분류기다."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.1,
-    )
+    try:
+        r = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "주어진 선택지 중 하나만 정확히 출력합니다."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+        )
+        raw = r["choices"][0]["message"]["content"].strip()
+    except Exception:
+        raw = "기타_문서"
 
-    name = sanitize_folder_name(r["choices"][0]["message"]["content"])
-    group_cache[k] = name
+    cand = sanitize_folder_name(raw)
+
+    # 멤버십 검증
+    if cand not in options:
+        # 가까운 후보 보정
+        near = difflib.get_close_matches(cand, options, n=1, cutoff=0.6)
+        cand = near[0] if near else ("기타_문서" if "기타_문서" in options else options[0])
+
+    group_cache[k] = cand
     save_cache(GROUP_CACHE, group_cache)
-    return name
+    return cand
 # -
 def generate_readme(topic, files, auto_split=False):
     k = h(("split" if auto_split else "nosplit") + topic + "||" + "||".join(sorted(files)))
@@ -697,6 +709,14 @@ if uploaded_files:
         [f.name.rsplit(".", 1)[0] for f in cluster_files]
     )
     main_folder = output_dir / main_group
+    # 없으면 안전하게 생성(README가 정의한 구조만 허용하려면 "기타_문서"로 리다이렉트)
+    if not main_folder.exists():
+        # README 정의만 허용하려면:
+        fallback = output_dir / "기타_문서"
+        fallback.mkdir(exist_ok=True)
+        log(f"[보정] '{main_group}' 미존재 → '기타_문서'로 대체")
+        main_folder = fallback
+     
 
     # 🚫 README 기반 선생성 구조에서는 mkdir 하면 안 됨
     if not main_folder.exists():
