@@ -700,16 +700,16 @@ if uploaded_files:
 
     # 🚫 README 기반 선생성 구조에서는 mkdir 하면 안 됨
     if not main_folder.exists():
-         raise RuntimeError(
+        raise RuntimeError(
             f"[구조 오류] README에 정의되지 않은 폴더: {main_group}"
         )
 
     readme_filename = f"★README_{main_group}.md"
 
-        (main_folder / readme_filename).write_text(
-            generate_readme(main_group, [f.name for f in cluster_files]),
-            encoding="utf-8",
-        )
+    (main_folder / readme_filename).write_text(
+        generate_readme(main_group, [f.name for f in cluster_files]),
+        encoding="utf-8",
+    )
 
         used_names = set()
         for sub_files in recursive_cluster(cluster_files):
