@@ -505,14 +505,30 @@ def create_category_folders(base_dir, category_structure):
 # ============================
 
 def prepare_blog_embeddings(files):
+    """블로그 초안 임베딩 생성 (안전 버전)"""
     texts, file_objs = [], []
+
     for f in files:
-        text = f.getvalue().decode("utf-8", errors="ignore")
+        try:
+            text = f.getvalue().decode("utf-8", errors="ignore")
+        except Exception:
+            st.warning(f"⚠️ {f.name} 파일을 읽는 중 오류 발생 — 건너뜀")
+            continue
+
         title = title_from_filename(f.name)
         clean_text = re.sub(r"\s+", " ", text.strip())[:4000]
         texts.append(f"제목: {title}\n내용: {clean_text}")
         file_objs.append(f)
+
+    if not texts:
+        st.error("❌ 분석할 유효한 블로그 문서가 없습니다.")
+        return {}
+
     vectors = embed_texts(texts)
+    if not vectors or len(vectors) != len(file_objs):
+        st.error("❌ 임베딩 생성 실패 또는 누락 발생.")
+        return {}
+
     return dict(zip(file_objs, vectors))
 
 # ============================
@@ -520,6 +536,13 @@ def prepare_blog_embeddings(files):
 # ============================
 
 def match_documents_to_categories(embeddings, category_structure):
+    """문서와 카테고리 매칭"""
+    
+    # ✅ 여기에 추가 (맨 위!)
+    if not embeddings:
+        st.error("❌ 임베딩 데이터가 비어 있습니다. 블로그 파일을 다시 확인하세요.")
+        return {}
+        
     all_topics = []
     for c in category_structure:
         for sub in c["subtopics"]:
