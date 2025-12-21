@@ -356,7 +356,7 @@ st.caption("문서를 분석하고 자동으로 구조화합니다")
 
 with left_col:
     st.subheader("File upload")
-    readme_file = st.file_uploader("📘 블로그 카테고리 README 파일 업로드", type=["md"]
+    readme_file = st.file_uploader("📘 블로그 카테고리 README 파일 업로드", type=["md"])
     content_files = st.file_uploader("📄 블로그 초안 파일 업로드 (복수 가능)", accept_multiple_files=True)
     (
         "📁문서를 업로드하세요 (.md, .pdf, .txt)",
