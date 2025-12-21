@@ -711,14 +711,15 @@ if uploaded_files:
         encoding="utf-8",
     )
 
-        used_names = set()
-        for sub_files in recursive_cluster(cluster_files):
-            base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
-            sub_group = unique_folder_name(base, used_names)
-            used_names.add(sub_group)
+    used_names = set()
+        
+    for sub_files in recursive_cluster(cluster_files):
+        base = generate_group_name([f.name.rsplit(".", 1)[0] for f in sub_files])
+        sub_group = unique_folder_name(base, used_names)
+        used_names.add(sub_group)
 
-            sub_folder = main_folder / sub_group
-            sub_folder.mkdir(parents=True, exist_ok=True)
+        sub_folder = main_folder / sub_group
+        sub_folder.mkdir(parents=True, exist_ok=True)
 
             # 🔒 README 기반 선생성 폴더 보호
             if main_folder.exists() and not main_folder.is_dir():
