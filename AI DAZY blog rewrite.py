@@ -740,11 +740,21 @@ if uploaded_files:
         unsafe_allow_html=True
     )
 
+    # ✅ 추가: 실제 진행률 콜백 (이것만 추가됨)
+    def progress_cb(done, total, phase):
+        pct = int(done / total * 100) if total else 100
+        progress.progress(pct)
+        progress_text.markdown(
+            f"<div class='status-bar'>| {phase} | [ {pct}%  ({done} / {total} file) ]</div>",
+            unsafe_allow_html=True
+        )
+
     build_structure(
         base_dir=output_dir,
         category_title=category_file.name.rsplit(".", 1)[0],
         category_readme_text=category_text,
         files=temp_files,
+        progress_cb=progress_cb,   # ✅ 추가
     )
 
     done = total
@@ -754,7 +764,6 @@ if uploaded_files:
         f"<div class='status-bar'>| 정리 중… | [ {pct}%  ({done} / {total} file) ]</div>",
         unsafe_allow_html=True
     )
-
 
     # 🔹 ZIP 생성
     zip_path = Path("result_documents.zip")
@@ -776,6 +785,7 @@ if uploaded_files:
     progress.progress(100)
     progress_text.markdown("<div class='status-bar'>[100% complete]</div>", unsafe_allow_html=True)
     log("모든 문서 정리 완료")
+
 
 
 else:
