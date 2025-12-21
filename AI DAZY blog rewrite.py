@@ -398,25 +398,7 @@ def h(t: str):
 # 기능 영역 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
 # ============================
-# ✨ 유틸리티 함수
-# ============================
-
-def h(t: str):
-    return hashlib.sha256(t.encode("utf-8")).hexdigest()
-
-def sanitize_folder_name(name: str) -> str:
-    name = (name or "").strip()
-    name = re.sub(r"[^\w가-힣\s]", "", name)
-    name = re.sub(r"\s+", "_", name)
-    return name.strip("_") or "기타_문서"
-
-def title_from_filename(file_name: str) -> str:
-    base = file_name.rsplit(".", 1)[0]
-    base = re.sub(r"[_\-]+", " ", base)
-    return base.strip()
-
-# ============================
-# 📘 README 기반 카테고리 로딩
+# ✨ 유틸 (파일/캐시 함수)
 # ============================
 
 def load_category_structure(readme_file):
@@ -448,17 +430,25 @@ def load_category_structure(readme_file):
         return []
 
 # ============================
-# 🧠 임베딩 생성
+# 📘 README 기반 폴더 생성 (선택)
 # ============================
 
-def embed_texts(texts):
-    missing = [t for t in texts if h(t) not in embedding_cache]
-    if missing:
-        r = openai.Embedding.create(model="text-embedding-3-large", input=missing)
-        for t, d in zip(missing, r["data"]):
-            embedding_cache[h(t)] = d["embedding"]
-        save_cache()
-    return [embedding_cache[h(t)] for t in texts]
+def create_category_folders(base_dir, category_structure):
+    folder_map = {}
+    for cat in category_structure:
+        cat_folder = base_dir / f"{sanitize_folder_name(cat['category'])}"
+        cat_folder.mkdir(exist_ok=True)
+        sub_map = {}
+        for sub in cat.get("subtopics", []):
+            sub_folder = cat_folder / sanitize_folder_name(sub)
+            sub_folder.mkdir(exist_ok=True)
+            sub_map[sub] = sub_folder
+        folder_map[cat['category']] = sub_map
+    return folder_map
+
+# ============================
+# 🧠 문서 확장 + 임베딩 통합
+# ============================
 
 def prepare_blog_embeddings(files):
     texts, file_objs = [], []
@@ -472,7 +462,7 @@ def prepare_blog_embeddings(files):
     return dict(zip(file_objs, vectors))
 
 # ============================
-# 📦 문서-카테고리 매핑
+# 📦 클러스터링 + 자동 재분해 (조건부)
 # ============================
 
 def match_documents_to_categories(embeddings, category_structure):
@@ -497,7 +487,7 @@ def match_documents_to_categories(embeddings, category_structure):
     return match_results
 
 # ============================
-# 🧾 README 요약 생성
+# ✨ GPT 폴더명 / README 생성
 # ============================
 
 def generate_summary_readme(category, subtopic, files):
@@ -540,17 +530,6 @@ README 요약 파일을 작성하세요.
 # 🚀 메인 파이프라인 실행
 # ============================
 
-st.subheader("AI Blog Category Sorter 🧠")
-st.caption("블로그 초안과 카테고리 구조를 업로드하면 자동으로 폴더별 정리 및 README를 생성합니다.")
-
-uploaded_files = st.file_uploader("📁 README + 블로그 초안 업로드", accept_multiple_files=True, type=["md", "txt"])
-zip_placeholder = st.empty()
-logs = []
-
-def log(msg):
-    logs.append(msg)
-    st.markdown("<div style='background:#dbede6;padding:0.8em;border-radius:10px;'>" + "<br>".join(logs[-8:]) + "</div>", unsafe_allow_html=True)
-
 if uploaded_files:
     readme_file = None
     blog_files = []
@@ -570,6 +549,7 @@ if uploaded_files:
 
     log("📘 카테고리 구조 분석 중...")
     category_structure = load_category_structure(readme_file)
+    folder_map = create_category_folders(output_dir, category_structure)
 
     log("🧠 블로그 문서 임베딩 생성 중...")
     embeddings = prepare_blog_embeddings(blog_files)
@@ -579,20 +559,14 @@ if uploaded_files:
 
     log("📝 README 요약 생성 중...")
     for category, subtopics in mapping.items():
-        cat_folder = output_dir / sanitize_folder_name(category)
-        cat_folder.mkdir(exist_ok=True)
-
         for sub, files in subtopics.items():
             if not files:
                 continue
-            sub_folder = cat_folder / sanitize_folder_name(sub)
-            sub_folder.mkdir(exist_ok=True)
-
+            folder = folder_map[category][sub]
             for f in files:
-                (sub_folder / f.name).write_bytes(f.getvalue())
-
+                (folder / f.name).write_bytes(f.getvalue())
             summary = generate_summary_readme(category, sub, files)
-            (sub_folder / f"README_{sanitize_folder_name(sub)}.md").write_text(summary, encoding="utf-8")
+            (folder / f"README_{sanitize_folder_name(sub)}.md").write_text(summary, encoding="utf-8")
 
     log("📦 ZIP 파일 생성 중...")
     zip_path = Path("result_documents.zip")
@@ -603,7 +577,7 @@ if uploaded_files:
                 z.write(p, arcname=os.path.relpath(p, output_dir))
 
     zip_placeholder.download_button(
-        "[ Download Categorized Blogs ]",
+        "[ Download Result ]",
         open("result_documents.zip", "rb"),
         file_name="categorized_blogs.zip",
         mime="application/zip",
@@ -611,7 +585,6 @@ if uploaded_files:
     )
 
     log("✅ 모든 카테고리 분류 및 README 요약 완료!")
-
 
 # 기능 영역 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
