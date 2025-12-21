@@ -579,11 +579,11 @@ def match_documents_to_categories(embeddings, category_structure):
         st.write(f"⚙️ embeddings 타입: {type(embeddings)} / 길이: {len(embeddings) if embeddings else 0}")
         return {}
 
-    try:
-        sample_names = [f.name for f in list(embeddings.keys())[:3]]
-        st.write(f"📊 임베딩 샘플: {sample_names}")
-    except Exception:
-        st.warning("⚠️ 임베딩 키 샘플 표시 중 오류 (무시 가능)")
+#    try:
+#        sample_names = [f.name for f in list(embeddings.keys())[:3]]
+#        st.write(f"📊 임베딩 샘플: {sample_names}")
+#    except Exception:
+#        st.warning("⚠️ 임베딩 키 샘플 표시 중 오류 (무시 가능)")
 
     all_topics = []
     for c in category_structure:
