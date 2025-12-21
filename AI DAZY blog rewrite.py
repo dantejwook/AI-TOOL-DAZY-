@@ -339,26 +339,14 @@ st.sidebar.markdown(
 # ============================
 # 📁 메인 UI
 # ============================
-
 left_col, right_col = st.columns([1, 1])
-
-if st.button("🚀 실행", use_container_width=True):
-    if not api_key or not readme_file or not content_files:
-        st.warning("README 파일, 초안 파일을 모두 업로드하세요.")
-    else:
-        with st.spinner("AI가 문서를 분석하고 있습니다... 잠시만요!"):
-            result_zip = process_documents(readme_file, content_files, api_key)
-            st.success("✅ 처리 완료! 아래에서 ZIP을 다운로드하세요.")
-            st.download_button("📦 결과 ZIP 다운로드", open(result_zip, "rb"), file_name="AI_Blog_Sorted.zip")
 
 st.subheader("AI auto file analyzer")
 st.caption("문서를 분석하고 자동으로 구조화합니다")
 
 with left_col:
     st.subheader("File upload")
-    readme_file = st.file_uploader"📘 블로그 카테고리 README 파일 업로드", type=["md"]
-    content_files = st.file_uploader"📄 블로그 초안 파일 업로드 (복수 가능)", accept_multiple_files=True
-    (
+    uploaded_files = st.file_uploader(
         "📁문서를 업로드하세요 (.md, .pdf, .txt)",
         accept_multiple_files=True,
         type=["md", "pdf", "txt"],
@@ -386,6 +374,7 @@ with right_col:
     st.caption("📁 문서 정리 후 다운로드 버튼이 활성화 됩니다.")
 
     zip_placeholder = st.empty()   # 👈 위에 두고
+
 
 
 # ============================
