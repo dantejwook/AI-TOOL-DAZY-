@@ -715,37 +715,68 @@ if uploaded_files:
     update_progress(cur_pct, "📝 README 요약 생성 시작…")
 
     for category, subtopics in mapping.items():
-        # 🔹 상위 폴더명: 카테고리 이름 + 태그 결합
+        # 1️⃣ 상위 폴더 (카테고리)
         cat_folder_name = f"{sanitize_folder_name(category)}_[{sanitize_folder_name(category_structure[0]['category'])}]"
         cat_folder = output_dir / cat_folder_name
         cat_folder.mkdir(exist_ok=True)
         log(f"📁 상위 폴더 생성: {cat_folder_name}")
 
-        for sub, files in subtopics.items():
+        for subtopic, files in subtopics.items():
             if not files:
                 continue
 
-            # 🔹 하위 폴더명: [카테고리]_주제명
-            sub_folder_name = f"[{sanitize_folder_name(category)}]_{sanitize_folder_name(sub)}"
+            # 2️⃣ 하위 폴더1 (세부 주제 그룹)
+            sub_folder_name = sanitize_folder_name(subtopic)
             sub_folder = cat_folder / sub_folder_name
             sub_folder.mkdir(exist_ok=True)
             log(f"📂 하위 폴더 생성: {sub_folder_name}")
 
-            # 🔹 파일 저장 시 이름에도 주제명 추가
-            for f in files:
-                new_name = f"[{sanitize_folder_name(sub)}]_{f.name}"
-                (sub_folder / new_name).write_bytes(f.getvalue())
+            # 3️⃣ 하위폴더 내부의 주제 단위 (파일 클러스터)
+            # GPT로 주제 자동 그룹핑
+            prompt = f"""
+다음 블로그 글 제목들을 보고 세부 주제 그룹으로 묶으세요.
+출력은 JSON 배열로, 각 그룹은 {{
+  "topic": "주제 이름",
+  "titles": ["파일명1", "파일명2", ...]
+}} 형태로 출력하세요.
 
-            # 🔹 README 생성
-            summary = generate_summary_readme(category, sub, files)
-            readme_name = f"README_[{sanitize_folder_name(category)}]_{sanitize_folder_name(sub)}.md"
-            (sub_folder / readme_name).write_text(summary, encoding="utf-8")
-            log(f"🧾 README 생성 완료: {readme_name}")
+파일 목록:
+{chr(10).join([f.name for f in files])}
+"""
+            r = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "너는 블로그 문서를 주제별로 세부 분류하는 전문가다."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
 
-            # 🔹 진행률 업데이트
+            try:
+                sub_groups = json.loads(r["choices"][0]["message"]["content"])
+            except Exception:
+                sub_groups = [{"topic": "기타_주제", "titles": [f.name for f in files]}]
+
+            for group in sub_groups:
+                group_name = f"[{sanitize_folder_name(subtopic)}]_{sanitize_folder_name(group['topic'])}"
+                group_folder = sub_folder / group_name
+                group_folder.mkdir(exist_ok=True)
+                log(f"🗂️ 하위폴더 주제 생성: {group_name}")
+
+                # 해당 주제에 속한 파일 저장
+                for f in files:
+                    if f.name in group["titles"]:
+                        (group_folder / f.name).write_bytes(f.getvalue())
+
+                # README 생성
+                summary = generate_summary_readme(category, group["topic"], files)
+                readme_path = group_folder / f"README_[{sanitize_folder_name(group['topic'])}].md"
+                readme_path.write_text(summary, encoding="utf-8")
+                log(f"🧾 README 생성 완료: {readme_path.name}")
+
             cur_pct = min(100, int(cur_pct + unit_weight))
-            update_progress(cur_pct, f"📝 README 생성 중… ({category} > {sub})")
-
+            update_progress(cur_pct, f"📝 README 생성 중… ({category} > {subtopic})")
+            
     # 5) ZIP (5%)
     update_progress(95, "📦 ZIP 파일 생성 중…")
     zip_path = Path("result_documents.zip")
