@@ -656,7 +656,7 @@ if uploaded_files:
         pct = int(done / total * 100)
         progress.progress(pct)
         progress_text.markdown(
-            f"<div class='status-bar'>|정리 중…| [{pct}%] ({done} / {total} file)</div>",
+            f"<div class='status-bar'>|정리 중…| [ {pct}%_({done} / {total} file) ]</div>",
             unsafe_allow_html=True
         )
         log(f"{main_group} 처리 완료")
