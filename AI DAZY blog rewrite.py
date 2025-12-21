@@ -555,7 +555,16 @@ JSON만 출력하라.
         temperature=0.1,
     )
 
-    return json.loads(r["choices"][0]["message"]["content"])
+    raw = r["choices"][0]["message"]["content"]
+
+    # ✅ 추가된 부분 (핵심)
+    try:
+        start = raw.index("{")
+        end = raw.rindex("}") + 1
+        json_text = raw[start:end]
+        return json.loads(json_text)
+    except Exception:
+        return {}
 
 
 def collect_actual_topics(expanded_docs):
