@@ -468,6 +468,13 @@ def load_category_structure(readme_file):
   {{"category": "시장 이해 & 트렌드", "subtopics": ["뷰티업계 산업 트렌드", "국내 뷰티업계 트렌드 변화"]}},
   {{"category": "국내외 뷰티업계 핫이슈", "subtopics": ["정책·규제·시장 이슈"]}}
 ]
+
+⚠️ 반드시 각 카테고리에 "subtopics" 리스트를 포함하세요.
+⚠️ 카테고리 이름이 같더라도 병합하지 말고 모두 나열하세요.
+⚠️ JSON 이외의 설명 문장은 절대 포함하지 마세요.
+
+문서:
+{text}
 """
 
     r = openai.ChatCompletion.create(
