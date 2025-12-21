@@ -537,10 +537,19 @@ def prepare_blog_embeddings(files):
 
 def match_documents_to_categories(embeddings, category_structure):
     """문서와 카테고리 매칭"""
-    
-    # ✅ 여기에 추가 (맨 위!)
-    if not embeddings:
-        st.error("❌ 임베딩 데이터가 비어 있습니다. 블로그 파일을 다시 확인하세요.")
+
+    # ✅ 1단계: embeddings 유효성 확인
+    if not embeddings or not isinstance(embeddings, dict):
+        st.error("❌ 임베딩 데이터가 비어 있거나 올바르지 않습니다.")
+        st.write(f"⚙️ embeddings 상태: {type(embeddings)} / 길이: {len(embeddings) if embeddings else 0}")
+        return {}
+
+    # ✅ 2단계: 실제 값 확인용 (디버그 로그)
+    try:
+        sample_keys = list(embeddings.keys())[:3]
+        st.write(f"📊 유효한 임베딩 {len(embeddings)}개 감지됨 — 예시: {[f.name for f in sample_keys]}")
+    except Exception as e:
+        st.warning(f"⚠️ 임베딩 내용 확인 중 오류: {e}")
         return {}
         
     all_topics = []
