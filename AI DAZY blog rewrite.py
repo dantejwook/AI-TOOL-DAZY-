@@ -395,20 +395,6 @@ def h(t: str):
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-import os
-import re
-import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import openai
-
-# =====================================================
-# ⚠️ 외부에서 이미 존재한다고 가정
-# =====================================================
-# h(text) -> hash
-# expand_cache, save_cache, EXPAND_CACHE
-# (기존 코드 그대로 사용)
-
-
 # =====================================================
 # ✨ 유틸
 # =====================================================
@@ -745,7 +731,7 @@ if uploaded_files:
     temp_files = [TempFile(f) for f in draft_files]
 
     progress.progress(30)
-    progress_text.markdown("<div class='status-bar'>[30%] 카테고리 분석 중…</div>", unsafe_allow_html=True)
+    progress_text.markdown("<div class='status-bar'>| 카테고리 분석중… | [ {pct}%  ({done} / {total} file) ]</div>", unsafe_allow_html=True)
 
     # 🔹 핵심 처리 (한 번만 호출)
     build_structure(
